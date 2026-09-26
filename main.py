@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="RECORD ROOM",
@@ -9,34 +8,27 @@ st.set_page_config(
 )
 
 # =========================================================
-# STREAMLIT 기본 스타일
+# STREAMLIT 기본 설정
 # =========================================================
 
 st.markdown("""
 <style>
-html, body, [class*="css"] {
-    font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Pretendard",
-        "Apple SD Gothic Neo",
-        sans-serif;
+html, body, [data-testid="stAppViewContainer"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #17100b !important;
 }
 
-.stApp {
-    background: #17100b;
+[data-testid="stHeader"] {
+    background: transparent !important;
 }
 
-header[data-testid="stHeader"] {
-    background: transparent;
-}
-
-#MainMenu {
-    visibility: hidden;
+[data-testid="stToolbar"] {
+    display: none !important;
 }
 
 footer {
-    visibility: hidden;
+    display: none !important;
 }
 
 .block-container {
@@ -48,28 +40,10 @@ footer {
 
 
 # =========================================================
-# RECORD ROOM
+# RECORD ROOM 전체 웹페이지
 # =========================================================
 
 html = r"""
-<!DOCTYPE html>
-<html lang="ko">
-
-<head>
-
-<meta charset="UTF-8">
-
-<meta
-    name="viewport"
-    content="width=device-width,
-             initial-scale=1.0,
-             maximum-scale=1.0,
-             user-scalable=no"
->
-
-<title>RECORD ROOM</title>
-
-
 <style>
 
 /* =====================================================
@@ -84,62 +58,51 @@ html,
 body {
     margin: 0;
     padding: 0;
-
     width: 100%;
-    min-height: 100%;
-
     background: #17100b;
+}
 
-    color: #f6eadb;
-
+body {
+    color: #f4e5d2;
     font-family:
         -apple-system,
         BlinkMacSystemFont,
         "Pretendard",
         "Apple SD Gothic Neo",
         sans-serif;
-}
-
-body {
     overflow-x: hidden;
 }
 
-
-/* =====================================================
-   WOOD TEXTURE
-===================================================== */
-
-body::before {
-    content: "";
-
-    position: fixed;
-
-    inset: 0;
-
-    pointer-events: none;
-
-    background:
-        repeating-linear-gradient(
-            90deg,
-            rgba(255,255,255,0.015) 0px,
-            rgba(255,255,255,0.015) 2px,
-            transparent 2px,
-            transparent 9px
-        );
-
-    opacity: 0.45;
-
-    z-index: 999;
+button,
+input {
+    font-family: inherit;
 }
 
 
 /* =====================================================
-   APP
+   WOOD BACKGROUND
 ===================================================== */
 
-#app {
+#record-room-app {
+    position: relative;
     width: 100%;
     min-height: 100vh;
+    background:
+        linear-gradient(
+            90deg,
+            rgba(255,255,255,0.015),
+            transparent 20%,
+            rgba(255,255,255,0.012) 50%,
+            transparent 80%
+        ),
+        repeating-linear-gradient(
+            90deg,
+            rgba(255,255,255,0.018) 0px,
+            rgba(255,255,255,0.018) 2px,
+            transparent 2px,
+            transparent 10px
+        ),
+        #1b1009;
 }
 
 
@@ -147,32 +110,14 @@ body::before {
    PAGE
 ===================================================== */
 
-/*
-   중요:
-   모든 페이지는 기본적으로 숨김.
-   active가 붙은 페이지만 표시.
-*/
-
-.page {
+.rr-page {
     display: none;
-
     width: 100%;
     min-height: 100vh;
-
-    position: relative;
 }
 
-.page.active {
+.rr-page.active {
     display: block;
-}
-
-
-/* =====================================================
-   BUTTON
-===================================================== */
-
-button {
-    font-family: inherit;
 }
 
 
@@ -180,396 +125,259 @@ button {
    OPENING
 ===================================================== */
 
-/*
-   기존 오류 수정:
-   #opening에 display:flex를 직접 넣으면
-   .page.active에서 active가 없어져도
-   계속 화면에 남아버리는 문제가 발생함.
-
-   따라서 .active일 때만 flex가 되도록 수정.
-*/
-
-#opening {
+#rr-opening {
     align-items: center;
     justify-content: center;
-
-    min-height: 100vh;
-
     text-align: center;
 }
 
-#opening.active {
+#rr-opening.active {
     display: flex;
 }
 
 .opening-inner {
-    width: min(90%, 650px);
-
+    width: min(90%, 760px);
     padding: 40px 20px;
 }
 
-.small-label {
-    letter-spacing: 7px;
-
+.est {
+    font-family: Georgia, serif;
     font-size: 11px;
-
+    letter-spacing: 7px;
     color: #b99a78;
-
-    margin-bottom: 20px;
+    margin-bottom: 25px;
 }
 
 .logo {
-    font-family: Georgia, serif;
-
-    font-size: clamp(
-        54px,
-        11vw,
-        105px
-    );
-
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 700;
+    font-size: clamp(55px, 10vw, 105px);
+    line-height: 0.9;
     letter-spacing: 5px;
-
-    line-height: 0.95;
-
-    color: #f3dfc4;
-
+    color: #f2dfc7;
     text-shadow:
         0 3px 0 #6b452a,
-        0 8px 25px rgba(0,0,0,0.5);
+        0 10px 30px rgba(0,0,0,0.55);
 }
 
 .subtitle {
-    margin-top: 28px;
-
-    color: #c7ad91;
-
+    margin-top: 30px;
+    color: #c6aa8c;
     font-size: 15px;
-
     letter-spacing: 2px;
 }
 
-.start-button {
-    margin-top: 50px;
-
-    padding: 16px 52px;
-
-    border: 1px solid #a98460;
-
+.enter-button {
+    margin-top: 55px;
+    min-width: 295px;
+    height: 64px;
+    padding: 0 35px;
+    border: 1px solid #a77d54;
     border-radius: 2px;
-
     background:
         linear-gradient(
             180deg,
-            #513522,
-            #2c1a10
+            #523520,
+            #2b190e
         );
-
-    color: #f5e5d2;
-
+    color: #f1dfca;
     font-size: 14px;
-
-    letter-spacing: 4px;
-
+    letter-spacing: 5px;
     cursor: pointer;
-
     box-shadow:
         inset 0 1px rgba(255,255,255,0.08),
-        0 12px 30px rgba(0,0,0,0.4);
-
+        0 15px 35px rgba(0,0,0,0.4);
     transition: 0.25s;
 }
 
-.start-button:hover {
+.enter-button:hover {
     transform: translateY(-3px);
-
-    background: #614329;
+    background: #62432a;
 }
 
-.start-button:active {
+.enter-button:active {
     transform: scale(0.98);
 }
 
 
 /* =====================================================
-   CHOICE PAGE
+   CHOICE
 ===================================================== */
 
-.choice-page {
-    padding: 50px 25px;
+#rr-choice {
+    padding: 35px 20px;
 }
 
-.top-logo {
+.choice-header {
     text-align: center;
-
     font-family: Georgia, serif;
-
-    font-size: 28px;
-
+    font-size: 25px;
     letter-spacing: 5px;
-
-    color: #e8d1b3;
+    color: #e7cfb0;
 }
 
-.choice-wrap {
+.choice-content {
     min-height: calc(100vh - 100px);
-
     display: flex;
-
     align-items: center;
-
     justify-content: center;
 }
 
-.choice-box {
-    width: min(90%, 800px);
-
+.choice-inner {
+    width: min(900px, 100%);
     text-align: center;
 }
 
 .choice-title {
     font-family: Georgia, serif;
-
-    font-size: clamp(
-        30px,
-        6vw,
-        52px
-    );
-
-    color: #f0dfc9;
-
+    font-size: clamp(32px, 6vw, 52px);
+    color: #efddc6;
     margin-bottom: 12px;
 }
 
-.choice-description {
-    color: #a98e73;
-
-    margin-bottom: 50px;
+.choice-desc {
+    color: #a98b70;
+    font-size: 14px;
+    margin-bottom: 48px;
 }
 
 .choice-buttons {
     display: flex;
-
     justify-content: center;
-
-    gap: 20px;
-
+    gap: 22px;
     flex-wrap: wrap;
 }
 
 .choice-button {
-    width: 250px;
-
-    height: 150px;
-
-    border: 1px solid #795438;
-
+    width: 260px;
+    height: 165px;
+    border: 1px solid #765337;
     background:
         linear-gradient(
             145deg,
-            rgba(104,69,43,0.8),
-            rgba(36,21,12,0.9)
+            rgba(99,65,40,0.9),
+            rgba(35,20,12,0.95)
         );
-
-    color: #ead8c0;
-
+    color: #ead8c1;
     cursor: pointer;
-
-    transition:
-        transform 0.25s,
-        border 0.25s,
-        background 0.25s;
-
+    transition: 0.25s;
     box-shadow:
-        0 15px 40px rgba(0,0,0,0.35);
+        0 18px 40px rgba(0,0,0,0.4);
 }
 
 .choice-button:hover {
-    transform: translateY(-7px);
-
-    border-color: #c49b6c;
-
-    background:
-        linear-gradient(
-            145deg,
-            rgba(125,85,51,0.9),
-            rgba(45,27,16,0.95)
-        );
-}
-
-.choice-button:active {
-    transform: scale(0.98);
+    transform: translateY(-6px);
+    border-color: #bd9161;
 }
 
 .choice-icon {
-    font-size: 34px;
-
-    margin-bottom: 16px;
+    font-family: Georgia, serif;
+    font-size: 38px;
+    margin-bottom: 15px;
 }
 
 .choice-name {
     font-family: Georgia, serif;
-
     font-size: 22px;
-
     letter-spacing: 2px;
 }
 
 .choice-sub {
-    margin-top: 8px;
-
-    font-size: 11px;
-
-    color: #9d8065;
+    margin-top: 9px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #96785d;
 }
 
 
 /* =====================================================
-   LISTENING PAGE
+   LISTEN PAGE
 ===================================================== */
 
-#listenPage {
-    padding: 25px 30px 60px;
+#rr-listen {
+    padding: 25px 25px 60px;
 }
 
 .listen-header {
-    display: flex;
-
-    align-items: center;
-
-    justify-content: space-between;
-
-    gap: 20px;
-
     max-width: 1250px;
-
-    margin: 0 auto;
+    margin: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.header-logo {
+.room-logo {
     font-family: Georgia, serif;
-
+    font-size: 25px;
     letter-spacing: 4px;
-
-    font-size: 26px;
-
     color: #e7d0b1;
-
-    white-space: nowrap;
 }
 
 .back-button {
-    border: 1px solid #65472f;
-
-    background: #21140d;
-
-    color: #bda184;
-
+    border: 1px solid #664830;
+    background: #21140c;
+    color: #bfa287;
     padding: 10px 17px;
-
     cursor: pointer;
-
-    transition: 0.2s;
 }
 
 .back-button:hover {
-    color: #f0ddc6;
-
-    border-color: #a37b53;
+    border-color: #a37c53;
+    color: #f0dfca;
 }
-
-.back-button:active {
-    transform: scale(0.97);
-}
-
-
-/* =====================================================
-   SEARCH
-===================================================== */
 
 .search-area {
     max-width: 1250px;
-
-    margin: 45px auto 30px;
+    margin: 50px auto 30px;
 }
 
 .search-title {
     font-family: Georgia, serif;
-
-    font-size: 33px;
-
-    color: #eddbc3;
-
-    margin-bottom: 20px;
+    font-size: clamp(28px, 5vw, 40px);
+    color: #eddac1;
+    margin-bottom: 22px;
 }
 
 .search-row {
     display: flex;
-
     gap: 10px;
 }
 
 .search-input {
     flex: 1;
-
-    height: 54px;
-
-    background: rgba(24,15,9,0.9);
-
-    border: 1px solid #64472e;
-
-    padding: 0 20px;
-
-    color: #f5e8d7;
-
+    height: 55px;
+    border: 1px solid #64462d;
     outline: none;
-
-    font-size: 15px;
+    background: #170d08;
+    color: #f3e3d0;
+    padding: 0 18px;
+    font-size: 14px;
 }
 
 .search-input::placeholder {
-    color: #725d49;
+    color: #755d48;
 }
 
 .search-input:focus {
-    border-color: #b28a5d;
-
-    box-shadow:
-        0 0 0 1px rgba(178,138,93,0.15);
+    border-color: #ad8258;
 }
 
 .search-button {
-    width: 110px;
-
-    border: 1px solid #8c6846;
-
-    background: #3c2617;
-
-    color: #ead5bb;
-
+    width: 100px;
+    border: 1px solid #8b6746;
+    background: #3d2718;
+    color: #ead7bf;
     cursor: pointer;
-
-    transition: 0.2s;
 }
 
 .search-button:hover {
-    background: #5b3b23;
+    background: #5a3b24;
 }
 
-.search-button:active {
-    transform: scale(0.97);
-}
-
-
-/* =====================================================
-   STATUS
-===================================================== */
-
-.status {
-    color: #967d64;
-
+.search-status {
+    margin: 15px 0 25px;
+    color: #937861;
     font-size: 12px;
-
-    margin: 16px 0 25px;
 }
 
 
@@ -579,283 +387,160 @@ button {
 
 .music-grid {
     max-width: 1250px;
-
-    margin: 0 auto;
-
+    margin: auto;
     display: grid;
-
     grid-template-columns:
         repeat(
             auto-fill,
-            minmax(180px, 1fr)
+            minmax(175px, 1fr)
         );
-
     gap: 22px;
 }
 
-
-/* =====================================================
-   MUSIC CARD
-===================================================== */
-
 .music-card {
-    position: relative;
-
+    padding: 10px;
+    border: 1px solid #4e3523;
     background:
         linear-gradient(
-            150deg,
+            145deg,
             #2c1b10,
-            #170e09
+            #160c07
         );
-
-    border: 1px solid #4e3523;
-
-    padding: 12px;
-
-    cursor: grab;
-
-    transition:
-        transform 0.25s,
-        border 0.25s,
-        box-shadow 0.25s;
-
-    user-select: none;
+    cursor: pointer;
+    transition: 0.25s;
 }
 
 .music-card:hover {
     transform: translateY(-7px);
-
-    border-color: #9d754e;
-
+    border-color: #a37a51;
     box-shadow:
         0 18px 35px rgba(0,0,0,0.45);
 }
 
-.music-card:active {
-    cursor: grabbing;
-}
-
 .cover-wrap {
     position: relative;
-
     width: 100%;
-
     aspect-ratio: 1 / 1;
-
     overflow: hidden;
-
     background: #080604;
 }
 
 .cover {
     width: 100%;
     height: 100%;
-
     object-fit: cover;
-
     display: block;
-}
-
-.cover-overlay {
-    position: absolute;
-
-    inset: 0;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    background: rgba(0,0,0,0);
-
-    transition: 0.2s;
-}
-
-.music-card:hover .cover-overlay {
-    background: rgba(0,0,0,0.2);
 }
 
 .drag-label {
     position: absolute;
-
-    bottom: 10px;
-
-    right: 10px;
-
-    background:
-        rgba(20,12,7,0.85);
-
-    border:
-        1px solid
-        rgba(255,220,180,0.25);
-
-    padding: 5px 8px;
-
-    font-size: 9px;
-
-    color: #d4b997;
+    right: 8px;
+    bottom: 8px;
+    padding: 5px 7px;
+    font-size: 8px;
+    letter-spacing: 1px;
+    background: rgba(20,10,5,0.85);
+    color: #d8b996;
+    border: 1px solid rgba(255,220,180,0.2);
 }
 
-.music-name {
-    margin-top: 13px;
-
+.song-title {
+    margin-top: 12px;
     color: #ead9c4;
-
     font-size: 14px;
-
     font-weight: 600;
-
     white-space: nowrap;
-
     overflow: hidden;
-
     text-overflow: ellipsis;
 }
 
-.artist-name {
+.song-artist {
     margin-top: 5px;
-
     color: #987d62;
-
     font-size: 11px;
-
     white-space: nowrap;
-
     overflow: hidden;
-
     text-overflow: ellipsis;
 }
 
 
 /* =====================================================
-   PLAYER PAGE
+   PLAYER
 ===================================================== */
 
-#playerPage {
-    min-height: 100vh;
-
+#rr-player {
     padding: 25px;
 }
 
-.player-top {
+.player-header {
     max-width: 1100px;
-
-    margin: 0 auto;
-
+    margin: auto;
     display: flex;
-
     justify-content: space-between;
-
     align-items: center;
-}
-
-.player-title {
-    font-family: Georgia, serif;
-
-    letter-spacing: 4px;
-
-    color: #dfc7a8;
 }
 
 .player-content {
-    min-height:
-        calc(100vh - 110px);
-
+    min-height: calc(100vh - 100px);
     display: flex;
-
-    align-items: center;
-
     justify-content: center;
-
-    gap:
-        clamp(
-            50px,
-            9vw,
-            130px
-        );
-
-    padding: 30px 20px;
-
+    align-items: center;
+    gap: clamp(45px, 9vw, 130px);
     flex-wrap: wrap;
 }
 
 
 /* =====================================================
-   RECORD
+   LP
 ===================================================== */
 
-.record-zone {
+.record-area {
     position: relative;
-
-    width:
-        min(
-            75vw,
-            510px
-        );
-
-    height:
-        min(
-            75vw,
-            510px
-        );
-
+    width: min(76vw, 510px);
+    height: min(76vw, 510px);
     display: flex;
-
-    align-items: center;
-
     justify-content: center;
+    align-items: center;
 }
 
 .record-shadow {
     position: absolute;
-
-    width: 92%;
-    height: 92%;
-
+    width: 90%;
+    height: 90%;
     border-radius: 50%;
-
-    background: rgba(0,0,0,0.6);
-
+    background: rgba(0,0,0,0.65);
     filter: blur(25px);
-
     transform: translateY(20px);
 }
 
 .record {
     position: relative;
-
     width: 88%;
     height: 88%;
-
     border-radius: 50%;
-
     background:
         repeating-radial-gradient(
             circle,
-            #161616 0px,
-            #161616 2px,
-            #252525 3px,
+            #111 0px,
+            #111 2px,
+            #292929 3px,
             #101010 5px
         );
-
     box-shadow:
-        0 20px 50px rgba(0,0,0,0.7),
-        inset 0 0 30px rgba(255,255,255,0.05);
-
-    transition: 0.5s;
+        0 20px 55px rgba(0,0,0,0.75),
+        inset 0 0 30px rgba(255,255,255,0.04);
+    transition: 0.4s;
 }
 
 .record.spinning {
     animation:
-        spin
-        2.1s
+        vinylSpin
+        2.2s
         linear
         infinite;
 }
 
-@keyframes spin {
-
+@keyframes vinylSpin {
     from {
         transform: rotate(0deg);
     }
@@ -863,68 +548,59 @@ button {
     to {
         transform: rotate(360deg);
     }
-
 }
-
-
-/* =====================================================
-   RECORD LABEL
-===================================================== */
 
 .record-label {
     position: absolute;
-
-    width: 34%;
-    height: 34%;
-
-    left: 33%;
-    top: 33%;
-
+    width: 35%;
+    height: 35%;
+    left: 32.5%;
+    top: 32.5%;
     border-radius: 50%;
-
-    background:
-        radial-gradient(
-            circle,
-            #b8895b 0%,
-            #8b5e39 65%,
-            #5b3b25 100%
-        );
-
-    border:
-        5px solid #2b1c13;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
     overflow: hidden;
+    border: 5px solid #282019;
+    background: #855a37;
 }
 
 .record-label img {
     width: 100%;
     height: 100%;
-
     object-fit: cover;
-
-    opacity: 0.8;
 }
 
 .center-hole {
     position: absolute;
-
+    left: calc(50% - 7px);
+    top: calc(50% - 7px);
     width: 14px;
     height: 14px;
-
     border-radius: 50%;
-
-    background: #ddd;
-
-    border:
-        4px solid #272727;
-
+    background: #d9d4ca;
+    border: 4px solid #292929;
     z-index: 5;
+}
+
+
+/* =====================================================
+   DROP MESSAGE
+===================================================== */
+
+.drop-message {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: #776250;
+    text-align: center;
+    font-family: Georgia, serif;
+    font-size: 15px;
+    width: 55%;
+    pointer-events: none;
+    z-index: 3;
+}
+
+.record.has-song .drop-message {
+    display: none;
 }
 
 
@@ -934,101 +610,64 @@ button {
 
 .tonearm {
     position: absolute;
-
     width: 180px;
     height: 180px;
-
-    right: -2%;
+    right: -4%;
     top: 1%;
-
     z-index: 20;
-
-    transform-origin:
-        86% 16%;
-
-    transform:
-        rotate(25deg);
-
+    transform-origin: 86% 16%;
+    transform: rotate(25deg);
     transition:
-        transform
-        0.7s
-        cubic-bezier(
-            .4,
-            .1,
-            .2,
-            1
-        );
-
+        transform 0.7s
+        cubic-bezier(.4,.1,.2,1);
     cursor: pointer;
 }
 
 .tonearm.lifted {
-    transform:
-        rotate(-22deg);
+    transform: rotate(-22deg);
 }
 
 .arm-base {
     position: absolute;
-
-    width: 58px;
-    height: 58px;
-
     right: 8px;
     top: 4px;
-
+    width: 58px;
+    height: 58px;
     border-radius: 50%;
-
     background:
         radial-gradient(
             circle at 35% 30%,
-            #bcb5aa,
-            #6d675f 55%,
+            #c3bcb0,
+            #6c665f 55%,
             #33312e
         );
-
     box-shadow:
-        0 6px 15px
-        rgba(0,0,0,0.6);
+        0 6px 15px rgba(0,0,0,0.6);
 }
 
 .arm {
     position: absolute;
-
-    width: 125px;
-    height: 14px;
-
     right: 34px;
     top: 28px;
-
+    width: 125px;
+    height: 14px;
     border-radius: 20px;
-
     background:
         linear-gradient(
             180deg,
-            #bdb6aa,
+            #c2bbb0,
             #595550
         );
-
-    transform:
-        rotate(27deg);
-
-    transform-origin:
-        right center;
-
-    box-shadow:
-        0 5px 10px
-        rgba(0,0,0,0.5);
+    transform: rotate(27deg);
+    transform-origin: right center;
 }
 
 .needle {
     position: absolute;
-
-    width: 24px;
-    height: 35px;
-
     left: 18px;
     bottom: 18px;
-
+    width: 24px;
+    height: 35px;
     background:
         linear-gradient(
             90deg,
@@ -1036,7 +675,6 @@ button {
             #d4cec1,
             #514e49
         );
-
     clip-path:
         polygon(
             20% 0,
@@ -1044,12 +682,6 @@ button {
             100% 75%,
             50% 100%,
             0 75%
-        );
-
-    filter:
-        drop-shadow(
-            0 4px 5px
-            rgba(0,0,0,0.5)
         );
 }
 
@@ -1059,115 +691,52 @@ button {
 ===================================================== */
 
 .player-info {
-    width:
-        min(
-            90vw,
-            320px
-        );
-
+    width: min(90vw, 320px);
     text-align: center;
 }
 
-.now-playing-label {
+.now-label {
     color: #8f765e;
-
     font-size: 10px;
-
     letter-spacing: 4px;
-
-    margin-bottom: 14px;
+    margin-bottom: 15px;
 }
 
 .now-cover {
-    width: 110px;
-    height: 110px;
-
+    width: 115px;
+    height: 115px;
     object-fit: cover;
-
     display: block;
-
-    margin:
-        0 auto 25px;
-
-    border:
-        1px solid #765638;
-
+    margin: 0 auto 25px;
+    border: 1px solid #765638;
     box-shadow:
-        0 15px 35px
-        rgba(0,0,0,0.5);
+        0 15px 35px rgba(0,0,0,0.5);
 }
 
 .now-title {
     font-family: Georgia, serif;
-
     font-size: 25px;
-
     color: #ebdac5;
-
     line-height: 1.25;
 }
 
 .now-artist {
+    margin-top: 9px;
     color: #9d8268;
-
     font-size: 13px;
-
-    margin-top: 10px;
 }
 
-.hint {
-    margin-top: 35px;
-
-    color: #755f4b;
-
+.player-hint {
+    margin-top: 32px;
+    color: #765f4a;
     font-size: 11px;
-
     line-height: 1.8;
 }
 
 .preview-note {
     margin-top: 20px;
-
     color: #665341;
-
     font-size: 10px;
-}
-
-
-/* =====================================================
-   EMPTY RECORD
-===================================================== */
-
-.drop-message {
-    position: absolute;
-
-    left: 50%;
-    top: 50%;
-
-    transform:
-        translate(
-            -50%,
-            -50%
-        );
-
-    width: 55%;
-
-    text-align: center;
-
-    color: #776250;
-
-    font-family: Georgia, serif;
-
-    font-size: 15px;
-
-    pointer-events: none;
-
-    z-index: 3;
-}
-
-.record.has-song
-.drop-message {
-    display: none;
 }
 
 
@@ -1177,43 +746,29 @@ button {
 
 @media (max-width: 700px) {
 
-    #listenPage {
-        padding:
-            20px
-            15px
-            50px;
+    #rr-listen {
+        padding: 20px 14px 50px;
     }
 
-    .listen-header {
-        align-items: flex-start;
-    }
-
-    .header-logo {
+    .room-logo {
         font-size: 20px;
     }
 
     .music-grid {
         grid-template-columns:
-            repeat(
-                2,
-                minmax(
-                    0,
-                    1fr
-                )
-            );
-
+            repeat(2, minmax(0, 1fr));
         gap: 12px;
     }
 
     .music-card {
-        padding: 8px;
+        padding: 7px;
     }
 
-    .music-name {
+    .song-title {
         font-size: 12px;
     }
 
-    .artist-name {
+    .song-artist {
         font-size: 10px;
     }
 
@@ -1221,57 +776,28 @@ button {
         display: none;
     }
 
-    .player-content {
-        gap: 25px;
-
-        padding-top: 50px;
-    }
-
-    .record-zone {
-        width:
-            min(
-                90vw,
-                430px
-            );
-
-        height:
-            min(
-                90vw,
-                430px
-            );
+    .record-area {
+        width: min(90vw, 430px);
+        height: min(90vw, 430px);
     }
 
     .tonearm {
-        transform:
-            scale(0.8)
-            rotate(25deg);
-
-        right: -7%;
+        transform: scale(.8) rotate(25deg);
+        right: -8%;
         top: -2%;
     }
 
     .tonearm.lifted {
-        transform:
-            scale(0.8)
-            rotate(-22deg);
-    }
-
-    .player-info {
-        margin-top: 0;
+        transform: scale(.8) rotate(-22deg);
     }
 
     .choice-buttons {
         flex-direction: column;
-
         align-items: center;
     }
 
     .choice-button {
-        width:
-            min(
-                90vw,
-                300px
-            );
+        width: min(90vw, 310px);
     }
 
     .search-row {
@@ -1286,43 +812,12 @@ button {
         font-size: 13px;
         padding: 0 13px;
     }
-
-}
-
-
-/* =====================================================
-   VERY SMALL MOBILE
-===================================================== */
-
-@media (max-width: 420px) {
-
-    .logo {
-        font-size: 50px;
-    }
-
-    .subtitle {
-        font-size: 13px;
-    }
-
-    .choice-title {
-        font-size: 29px;
-    }
-
-    .search-title {
-        font-size: 25px;
-    }
-
 }
 
 </style>
 
-</head>
 
-
-<body>
-
-
-<div id="app">
+<div id="record-room-app">
 
 
 <!-- =====================================================
@@ -1330,19 +825,18 @@ button {
 ===================================================== -->
 
 <section
-    id="opening"
-    class="page active"
+    id="rr-opening"
+    class="rr-page active"
 >
 
     <div class="opening-inner">
 
-        <div class="small-label">
+        <div class="est">
             EST. 2026 · MUSIC & MEMORY
         </div>
 
         <div class="logo">
-            RECORD<br>
-            ROOM
+            RECORD<br>ROOM
         </div>
 
         <div class="subtitle">
@@ -1350,9 +844,8 @@ button {
         </div>
 
         <button
-            type="button"
-            class="start-button"
-            onclick="showPage('choicePage')"
+            class="enter-button"
+            id="enterRoom"
         >
             ENTER ROOM
         </button>
@@ -1367,40 +860,31 @@ button {
 ===================================================== -->
 
 <section
-    id="choicePage"
-    class="page choice-page"
+    id="rr-choice"
+    class="rr-page"
 >
 
-    <div class="top-logo">
+    <div class="choice-header">
         RECORD ROOM
     </div>
 
+    <div class="choice-content">
 
-    <div class="choice-wrap">
-
-        <div class="choice-box">
+        <div class="choice-inner">
 
             <div class="choice-title">
                 What would you like?
             </div>
 
-            <div class="choice-description">
+            <div class="choice-desc">
                 오늘은 어떤 음악을 만나볼까요?
             </div>
 
-
             <div class="choice-buttons">
 
-
-                <!-- 노래듣기 -->
-
                 <button
-                    type="button"
                     class="choice-button"
-                    onclick="
-                        showPage('listenPage');
-                        initializeSearch();
-                    "
+                    id="listenChoice"
                 >
 
                     <div class="choice-icon">
@@ -1418,14 +902,9 @@ button {
                 </button>
 
 
-                <!-- 추천 -->
-
                 <button
-                    type="button"
                     class="choice-button"
-                    onclick="
-                        showRecommendationMessage();
-                    "
+                    id="recommendChoice"
                 >
 
                     <div class="choice-icon">
@@ -1442,7 +921,6 @@ button {
 
                 </button>
 
-
             </div>
 
         </div>
@@ -1457,22 +935,19 @@ button {
 ===================================================== -->
 
 <section
-    id="listenPage"
-    class="page"
+    id="rr-listen"
+    class="rr-page"
 >
 
     <div class="listen-header">
 
-        <div class="header-logo">
+        <div class="room-logo">
             RECORD ROOM
         </div>
 
         <button
-            type="button"
             class="back-button"
-            onclick="
-                showPage('choicePage');
-            "
+            id="listenBack"
         >
             ← 뒤로
         </button>
@@ -1486,7 +961,6 @@ button {
             오늘 들을 레코드를 찾아보세요.
         </div>
 
-
         <div class="search-row">
 
             <input
@@ -1494,32 +968,22 @@ button {
                 class="search-input"
                 type="text"
                 placeholder="노래 제목이나 아티스트를 검색해보세요"
-                onkeydown="
-                    if(event.key === 'Enter') {
-                        searchMusic();
-                    }
-                "
             >
 
-
             <button
-                type="button"
                 class="search-button"
-                onclick="
-                    searchMusic();
-                "
+                id="searchButton"
             >
                 검색
             </button>
 
         </div>
 
-
         <div
             id="searchStatus"
-            class="status"
+            class="search-status"
         >
-            음악을 불러오는 중...
+            검색어를 입력해 음악을 찾아보세요.
         </div>
 
     </div>
@@ -1538,23 +1002,19 @@ button {
 ===================================================== -->
 
 <section
-    id="playerPage"
-    class="page"
+    id="rr-player"
+    class="rr-page"
 >
 
-    <div class="player-top">
+    <div class="player-header">
 
-        <div class="player-title">
+        <div class="room-logo">
             RECORD ROOM
         </div>
 
-
         <button
-            type="button"
             class="back-button"
-            onclick="
-                goBackFromPlayer();
-            "
+            id="playerBack"
         >
             ← 음악 목록
         </button>
@@ -1565,24 +1025,16 @@ button {
     <div class="player-content">
 
 
-        <!-- RECORD -->
+        <!-- LP -->
 
-        <div class="record-zone">
+        <div class="record-area">
 
             <div class="record-shadow"></div>
 
-
             <div
-                id="record"
                 class="record"
-                ondragover="
-                    event.preventDefault();
-                "
-                ondrop="
-                    dropSong(event);
-                "
+                id="record"
             >
-
 
                 <div class="drop-message">
 
@@ -1592,15 +1044,14 @@ button {
 
                     <div
                         style="
-                            font-size:10px;
                             margin-top:8px;
+                            font-size:10px;
                         "
                     >
                         음악 카드를 이곳에 놓아주세요
                     </div>
 
                 </div>
-
 
                 <div class="record-label">
 
@@ -1612,27 +1063,19 @@ button {
 
                 </div>
 
-
                 <div class="center-hole"></div>
 
             </div>
 
 
-            <!-- TONEARM -->
-
             <div
+                class="tonearm lifted"
                 id="tonearm"
-                class="tonearm"
-                onclick="
-                    toggleTonearm();
-                "
                 title="톤암 클릭"
             >
 
                 <div class="arm-base"></div>
-
                 <div class="arm"></div>
-
                 <div class="needle"></div>
 
             </div>
@@ -1640,14 +1083,13 @@ button {
         </div>
 
 
-        <!-- PLAYER INFO -->
+        <!-- INFO -->
 
         <div class="player-info">
 
-            <div class="now-playing-label">
+            <div class="now-label">
                 NOW PLAYING
             </div>
-
 
             <img
                 id="nowCover"
@@ -1656,14 +1098,12 @@ button {
                 alt=""
             >
 
-
             <div
                 id="nowTitle"
                 class="now-title"
             >
                 레코드를 올려주세요
             </div>
-
 
             <div
                 id="nowArtist"
@@ -1672,14 +1112,12 @@ button {
                 MUSIC PLAYER
             </div>
 
-
-            <div class="hint">
-                음악 카드를 LP 위로 끌어놓으면<br>
-                톤암이 내려가며 재생됩니다.<br><br>
-
-                재생 중에는 톤암을 클릭해보세요.
+            <div class="player-hint">
+                음악 카드를 선택하면<br>
+                레코드가 재생됩니다.<br><br>
+                톤암을 클릭하면 재생을<br>
+                일시정지할 수 있습니다.
             </div>
-
 
             <div class="preview-note">
                 Apple Music / iTunes 미리듣기
@@ -1695,785 +1133,580 @@ button {
 </div>
 
 
-<!-- =====================================================
-     AUDIO PLAYER
-===================================================== -->
-
 <audio
-    id="audioPlayer"
+    id="rr-audio"
     preload="none"
 ></audio>
 
 
 <script>
 
-
 /* =====================================================
-   GLOBAL
+   RECORD ROOM JAVASCRIPT
 ===================================================== */
 
-let currentSong = null;
+(function () {
 
-let currentAudio =
-    document.getElementById(
-        "audioPlayer"
+    "use strict";
+
+
+    /* -------------------------------------------------
+       ELEMENTS
+    ------------------------------------------------- */
+
+    const opening =
+        document.getElementById("rr-opening");
+
+    const choice =
+        document.getElementById("rr-choice");
+
+    const listen =
+        document.getElementById("rr-listen");
+
+    const player =
+        document.getElementById("rr-player");
+
+    const enterButton =
+        document.getElementById("enterRoom");
+
+    const listenChoice =
+        document.getElementById("listenChoice");
+
+    const recommendChoice =
+        document.getElementById("recommendChoice");
+
+    const listenBack =
+        document.getElementById("listenBack");
+
+    const playerBack =
+        document.getElementById("playerBack");
+
+    const searchButton =
+        document.getElementById("searchButton");
+
+    const searchInput =
+        document.getElementById("searchInput");
+
+    const searchStatus =
+        document.getElementById("searchStatus");
+
+    const musicGrid =
+        document.getElementById("musicGrid");
+
+    const audio =
+        document.getElementById("rr-audio");
+
+    const record =
+        document.getElementById("record");
+
+    const tonearm =
+        document.getElementById("tonearm");
+
+    const recordCover =
+        document.getElementById("recordCover");
+
+    const nowCover =
+        document.getElementById("nowCover");
+
+    const nowTitle =
+        document.getElementById("nowTitle");
+
+    const nowArtist =
+        document.getElementById("nowArtist");
+
+
+    let currentSong = null;
+    let callbackNumber = 0;
+
+
+    /* -------------------------------------------------
+       PAGE
+    ------------------------------------------------- */
+
+    function showPage(target) {
+
+        const pages = [
+            opening,
+            choice,
+            listen,
+            player
+        ];
+
+        pages.forEach(function (page) {
+
+            page.classList.remove("active");
+
+        });
+
+
+        target.classList.add("active");
+
+
+        window.scrollTo({
+            top: 0,
+            behavior: "instant"
+        });
+    }
+
+
+    /* -------------------------------------------------
+       ENTER ROOM
+    ------------------------------------------------- */
+
+    enterButton.addEventListener(
+        "click",
+        function () {
+
+            showPage(choice);
+
+        }
     );
 
-let searchInitialized = false;
 
-let jsonpCounter = 0;
+    /* -------------------------------------------------
+       LISTEN
+    ------------------------------------------------- */
+
+    listenChoice.addEventListener(
+        "click",
+        function () {
+
+            showPage(listen);
+
+            searchInput.focus();
+
+        }
+    );
 
 
-/* =====================================================
-   PAGE 이동
-===================================================== */
+    /* -------------------------------------------------
+       RECOMMEND
+    ------------------------------------------------- */
 
-function showPage(pageId) {
+    recommendChoice.addEventListener(
+        "click",
+        function () {
 
-    const pages =
-        document.querySelectorAll(
-            ".page"
-        );
-
-
-    pages.forEach(
-        function(page) {
-
-            page.classList.remove(
-                "active"
+            alert(
+                "노래 추천 기능은 다음 단계에서 추가할 예정이에요!"
             );
 
         }
     );
 
 
-    const target =
-        document.getElementById(
-            pageId
-        );
+    /* -------------------------------------------------
+       BACK
+    ------------------------------------------------- */
 
+    listenBack.addEventListener(
+        "click",
+        function () {
 
-    if (!target) {
-        return;
-    }
+            stopAudio();
 
+            showPage(choice);
 
-    target.classList.add(
-        "active"
+        }
     );
 
 
-    window.scrollTo(
-        0,
-        0
+    playerBack.addEventListener(
+        "click",
+        function () {
+
+            stopAudio();
+
+            showPage(listen);
+
+        }
     );
-}
 
 
-/* =====================================================
-   추천 버튼
-===================================================== */
+    /* -------------------------------------------------
+       SEARCH BUTTON
+    ------------------------------------------------- */
 
-function showRecommendationMessage() {
+    searchButton.addEventListener(
+        "click",
+        function () {
 
-    alert(
-        "노래 추천 기능은 다음 단계에서 추가할 수 있어요!"
+            searchMusic();
+
+        }
     );
-}
 
 
-/* =====================================================
-   SEARCH INITIALIZE
-===================================================== */
+    searchInput.addEventListener(
+        "keydown",
+        function (event) {
 
-function initializeSearch() {
+            if (
+                event.key === "Enter"
+            ) {
 
-    if (searchInitialized) {
-        return;
-    }
+                searchMusic();
 
+            }
 
-    searchInitialized = true;
-
-
-    const input =
-        document.getElementById(
-            "searchInput"
-        );
+        }
+    );
 
 
-    if (input) {
+    /* -------------------------------------------------
+       SEARCH
+    ------------------------------------------------- */
 
-        input.value =
-            "K-pop";
+    function searchMusic() {
 
-    }
-
-
-    searchMusic("K-pop");
-}
+        const term =
+            searchInput.value.trim();
 
 
-/* =====================================================
-   iTunes Search API
-===================================================== */
+        if (!term) {
 
-function searchMusic(customTerm) {
+            searchStatus.textContent =
+                "검색어를 입력해주세요.";
 
-    const input =
-        document.getElementById(
-            "searchInput"
-        );
+            return;
 
-
-    let term =
-        customTerm ||
-        (
-            input
-            ?
-            input.value.trim()
-            :
-            ""
-        );
-
-
-    if (!term) {
-
-        term = "K-pop";
-
-
-        if (input) {
-            input.value = term;
         }
 
-    }
+
+        searchStatus.textContent =
+            "'" +
+            term +
+            "' 검색 중...";
 
 
-    const status =
-        document.getElementById(
-            "searchStatus"
-        );
+        musicGrid.innerHTML = "";
 
 
-    const grid =
-        document.getElementById(
-            "musicGrid"
-        );
+        const callbackName =
+            "recordRoomCallback" +
+            (++callbackNumber);
 
 
-    status.textContent =
-        "음악을 검색하는 중...";
-
-
-    grid.innerHTML = "";
-
-
-    /*
-       JSONP callback
-    */
-
-    const callbackName =
-        "itunesCallback_" +
-        (++jsonpCounter);
-
-
-    window[callbackName] =
-        function(data) {
-
-
-            try {
+        window[callbackName] =
+            function (data) {
 
                 const results =
-                    data.results ||
-                    [];
+                    data.results || [];
 
 
-                renderSongs(
-                    results
-                );
+                renderSongs(results);
 
 
                 if (
-                    results.length
-                    > 0
+                    results.length === 0
                 ) {
 
-                    status.textContent =
-                        "'" +
-                        term +
-                        "' 검색 결과 " +
-                        results.length +
-                        "곡";
-
-                }
-
-                else {
-
-                    status.textContent =
+                    searchStatus.textContent =
                         "검색 결과가 없습니다.";
 
                 }
+                else {
 
-            }
+                    searchStatus.textContent =
+                        "'" +
+                        term +
+                        "' 검색 결과";
 
-            catch(error) {
+                }
 
-                console.error(
-                    error
-                );
 
-                status.textContent =
-                    "검색 결과를 표시하는 중 오류가 발생했습니다.";
+                const oldScript =
+                    document.getElementById(
+                        callbackName
+                    );
 
-            }
 
+                if (oldScript) {
+                    oldScript.remove();
+                }
 
-            /*
-               사용한 script 제거
-            */
 
-            const script =
-                document.getElementById(
-                    callbackName
-                );
-
-
-            if (script) {
-                script.remove();
-            }
-
-
-            delete window[
-                callbackName
-            ];
-
-        };
-
-
-    /*
-       검색 URL
-    */
-
-    const script =
-        document.createElement(
-            "script"
-        );
-
-
-    const encodedTerm =
-        encodeURIComponent(
-            term
-        );
-
-
-    script.id =
-        callbackName;
-
-
-    script.src =
-        "https://itunes.apple.com/search" +
-        "?term=" +
-        encodedTerm +
-        "&country=KR" +
-        "&media=music" +
-        "&entity=song" +
-        "&limit=30" +
-        "&lang=ko_kr" +
-        "&callback=" +
-        callbackName;
-
-
-    script.onerror =
-        function() {
-
-            status.textContent =
-                "음악 검색에 실패했습니다. 잠시 후 다시 시도해주세요.";
-
-
-            script.remove();
-
-
-            delete window[
-                callbackName
-            ];
-
-        };
-
-
-    document.body.appendChild(
-        script
-    );
-}
-
-
-/* =====================================================
-   MUSIC CARD 생성
-===================================================== */
-
-function renderSongs(songs) {
-
-    const grid =
-        document.getElementById(
-            "musicGrid"
-        );
-
-
-    grid.innerHTML = "";
-
-
-    let displayedCount = 0;
-
-
-    songs.forEach(
-        function(song) {
-
-
-            /*
-               미리듣기가 없는 곡은 제외
-            */
-
-            if (
-                !song.previewUrl
-            ) {
-                return;
-            }
-
-
-            displayedCount++;
-
-
-            const card =
-                document.createElement(
-                    "div"
-                );
-
-
-            card.className =
-                "music-card";
-
-
-            card.draggable = true;
-
-
-            /*
-               artwork
-            */
-
-            let artwork =
-                song.artworkUrl100 ||
-                "";
-
-
-            /*
-               가능한 경우
-               고해상도 이미지 사용
-            */
-
-            artwork =
-                artwork
-                .replace(
-                    "100x100bb",
-                    "600x600bb"
-                )
-                .replace(
-                    "100x100-75",
-                    "600x600-75"
-                );
-
-
-            /*
-               곡 정보
-            */
-
-            const title =
-                escapeHTML(
-                    song.trackName ||
-                    "Unknown Song"
-                );
-
-
-            const artist =
-                escapeHTML(
-                    song.artistName ||
-                    "Unknown Artist"
-                );
-
-
-            card.innerHTML = `
-
-                <div class="cover-wrap">
-
-                    <img
-                        class="cover"
-                        src="${artwork}"
-                        alt=""
-                        draggable="false"
-                    >
-
-                    <div class="cover-overlay"></div>
-
-                    <div class="drag-label">
-                        DRAG TO LP
-                    </div>
-
-                </div>
-
-
-                <div class="music-name">
-                    ${title}
-                </div>
-
-
-                <div class="artist-name">
-                    ${artist}
-                </div>
-
-            `;
-
-
-            /*
-               곡 데이터
-            */
-
-            const songData = {
-
-                title:
-                    song.trackName ||
-                    "Unknown Song",
-
-                artist:
-                    song.artistName ||
-                    "Unknown Artist",
-
-                artwork:
-                    artwork,
-
-                preview:
-                    song.previewUrl,
-
-                store:
-                    song.trackViewUrl ||
-                    song.collectionViewUrl ||
-                    ""
+                try {
+                    delete window[
+                        callbackName
+                    ];
+                }
+                catch (e) {}
 
             };
 
 
-            /*
-               PC 드래그
-            */
-
-            card.addEventListener(
-                "dragstart",
-                function(event) {
-
-                    currentSong =
-                        songData;
+        const script =
+            document.createElement("script");
 
 
-                    event.dataTransfer.setData(
-                        "text/plain",
-                        JSON.stringify(
+        script.id =
+            callbackName;
+
+
+        script.src =
+            "https://itunes.apple.com/search" +
+            "?term=" +
+            encodeURIComponent(term) +
+            "&country=KR" +
+            "&media=music" +
+            "&entity=song" +
+            "&limit=30" +
+            "&callback=" +
+            callbackName;
+
+
+        script.onerror =
+            function () {
+
+                searchStatus.textContent =
+                    "음악 검색에 실패했습니다. 잠시 후 다시 시도해주세요.";
+
+                script.remove();
+
+                try {
+                    delete window[
+                        callbackName
+                    ];
+                }
+                catch (e) {}
+
+            };
+
+
+        document.body.appendChild(
+            script
+        );
+
+    }
+
+
+    /* -------------------------------------------------
+       SONGS
+    ------------------------------------------------- */
+
+    function renderSongs(songs) {
+
+        musicGrid.innerHTML = "";
+
+
+        let count = 0;
+
+
+        songs.forEach(
+            function (song) {
+
+                if (
+                    !song.previewUrl
+                ) {
+
+                    return;
+
+                }
+
+
+                count++;
+
+
+                let artwork =
+                    song.artworkUrl100 ||
+                    "";
+
+
+                artwork =
+                    artwork.replace(
+                        "100x100bb",
+                        "600x600bb"
+                    );
+
+
+                artwork =
+                    artwork.replace(
+                        "100x100-75",
+                        "600x600-75"
+                    );
+
+
+                const card =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                card.className =
+                    "music-card";
+
+
+                card.innerHTML = `
+
+                    <div class="cover-wrap">
+
+                        <img
+                            class="cover"
+                            src="${escapeHTML(artwork)}"
+                            alt=""
+                        >
+
+                        <div class="drag-label">
+                            PLAY
+                        </div>
+
+                    </div>
+
+                    <div class="song-title">
+                        ${escapeHTML(
+                            song.trackName ||
+                            "Unknown"
+                        )}
+                    </div>
+
+                    <div class="song-artist">
+                        ${escapeHTML(
+                            song.artistName ||
+                            "Unknown Artist"
+                        )}
+                    </div>
+
+                `;
+
+
+                const songData = {
+
+                    title:
+                        song.trackName ||
+                        "Unknown",
+
+                    artist:
+                        song.artistName ||
+                        "Unknown Artist",
+
+                    artwork:
+                        artwork,
+
+                    preview:
+                        song.previewUrl
+
+                };
+
+
+                /* -------------------------------------
+                   클릭
+                ------------------------------------- */
+
+                card.addEventListener(
+                    "click",
+                    function () {
+
+                        loadSong(
                             songData
-                        )
-                    );
+                        );
 
-                }
-            );
+                    }
+                );
 
 
-            /*
-               카드 클릭
-               모바일에서도 사용 가능
-            */
+                /* -------------------------------------
+                   PC 드래그
+                ------------------------------------- */
 
-            card.addEventListener(
-                "click",
-                function() {
+                card.draggable = true;
 
-                    loadSongToPlayer(
-                        songData
-                    );
 
-                }
-            );
+                card.addEventListener(
+                    "dragstart",
+                    function (event) {
 
+                        event.dataTransfer.setData(
+                            "text/plain",
+                            JSON.stringify(
+                                songData
+                            )
+                        );
 
-            grid.appendChild(
-                card
-            );
+                    }
+                );
 
-        }
-    );
 
-
-    if (
-        displayedCount === 0
-    ) {
-
-        grid.innerHTML = `
-
-            <div
-                style="
-                    grid-column:1/-1;
-                    text-align:center;
-                    padding:70px 20px;
-                    color:#806954;
-                "
-            >
-                미리듣기를 제공하는 곡이 없습니다.
-            </div>
-
-        `;
-
-    }
-}
-
-
-/* =====================================================
-   DROP SONG
-===================================================== */
-
-function dropSong(event) {
-
-    event.preventDefault();
-
-
-    const data =
-        event.dataTransfer.getData(
-            "text/plain"
-        );
-
-
-    if (!data) {
-        return;
-    }
-
-
-    try {
-
-        const song =
-            JSON.parse(
-                data
-            );
-
-
-        loadSongToPlayer(
-            song
-        );
-
-    }
-
-    catch(error) {
-
-        console.error(
-            error
-        );
-
-    }
-}
-
-
-/* =====================================================
-   LOAD SONG
-===================================================== */
-
-function loadSongToPlayer(song) {
-
-    if (
-        !song ||
-        !song.preview
-    ) {
-        return;
-    }
-
-
-    currentSong =
-        song;
-
-
-    /*
-       플레이어 화면
-    */
-
-    showPage(
-        "playerPage"
-    );
-
-
-    /*
-       제목
-    */
-
-    document.getElementById(
-        "nowTitle"
-    ).textContent =
-        song.title;
-
-
-    /*
-       가수
-    */
-
-    document.getElementById(
-        "nowArtist"
-    ).textContent =
-        song.artist;
-
-
-    /*
-       커버
-    */
-
-    document.getElementById(
-        "nowCover"
-    ).src =
-        song.artwork;
-
-
-    document.getElementById(
-        "recordCover"
-    ).src =
-        song.artwork;
-
-
-    /*
-       LP 상태
-    */
-
-    document.getElementById(
-        "record"
-    ).classList.add(
-        "has-song"
-    );
-
-
-    /*
-       기존 음악 정지
-    */
-
-    currentAudio.pause();
-
-
-    currentAudio.currentTime =
-        0;
-
-
-    /*
-       새 preview
-    */
-
-    currentAudio.src =
-        song.preview;
-
-
-    /*
-       톤암 내려오기
-    */
-
-    document.getElementById(
-        "tonearm"
-    ).classList.remove(
-        "lifted"
-    );
-
-
-    /*
-       LP 회전
-    */
-
-    document.getElementById(
-        "record"
-    ).classList.add(
-        "spinning"
-    );
-
-
-    /*
-       재생
-    */
-
-    const playPromise =
-        currentAudio.play();
-
-
-    if (
-        playPromise !== undefined
-    ) {
-
-        playPromise.catch(
-            function(error) {
-
-                console.log(
-                    "Autoplay blocked:",
-                    error
+                musicGrid.appendChild(
+                    card
                 );
 
             }
         );
 
-    }
 
-}
+        if (count === 0) {
 
+            musicGrid.innerHTML = `
 
-/* =====================================================
-   TONEARM
-===================================================== */
+                <div
+                    style="
+                        grid-column:1/-1;
+                        text-align:center;
+                        padding:70px 20px;
+                        color:#806954;
+                    "
+                >
+                    미리듣기를 제공하는 곡이 없습니다.
+                </div>
 
-function toggleTonearm() {
+            `;
 
-    if (!currentSong) {
-        return;
-    }
-
-
-    const tonearm =
-        document.getElementById(
-            "tonearm"
-        );
-
-
-    const record =
-        document.getElementById(
-            "record"
-        );
-
-
-    /*
-       재생 중
-       → 일시정지
-       → 톤암 올림
-       → LP 정지
-    */
-
-    if (
-        !currentAudio.paused
-    ) {
-
-        currentAudio.pause();
-
-
-        tonearm.classList.add(
-            "lifted"
-        );
-
-
-        record.classList.remove(
-            "spinning"
-        );
+        }
 
     }
 
 
-    /*
-       정지 중
-       → 재생
-       → 톤암 내림
-       → LP 회전
-    */
+    /* -------------------------------------------------
+       LOAD SONG
+    ------------------------------------------------- */
 
-    else {
+    function loadSong(song) {
+
+        if (
+            !song ||
+            !song.preview
+        ) {
+
+            return;
+
+        }
+
+
+        currentSong =
+            song;
+
+
+        nowTitle.textContent =
+            song.title;
+
+
+        nowArtist.textContent =
+            song.artist;
+
+
+        nowCover.src =
+            song.artwork;
+
+
+        recordCover.src =
+            song.artwork;
+
+
+        record.classList.add(
+            "has-song"
+        );
+
+
+        audio.pause();
+
+
+        audio.currentTime = 0;
+
+
+        audio.src =
+            song.preview;
+
 
         tonearm.classList.remove(
             "lifted"
@@ -2485,19 +1718,35 @@ function toggleTonearm() {
         );
 
 
-        const playPromise =
-            currentAudio.play();
+        showPage(player);
+
+
+        /*
+           iOS Safari에서는
+           사용자의 클릭 이벤트 안에서
+           audio.play()가 호출되어야
+           자동재생 제한에 걸릴 가능성이 낮음.
+        */
+
+        const promise =
+            audio.play();
 
 
         if (
-            playPromise !== undefined
+            promise &&
+            typeof promise.catch === "function"
         ) {
 
-            playPromise.catch(
-                function(error) {
+            promise.catch(
+                function () {
 
-                    console.log(
-                        error
+                    /*
+                       자동재생이 막힌 경우에도
+                       플레이어 화면은 정상적으로 표시.
+                    */
+
+                    record.classList.remove(
+                        "spinning"
                     );
 
                 }
@@ -2506,27 +1755,161 @@ function toggleTonearm() {
         }
 
     }
-}
 
 
-/* =====================================================
-   AUDIO END
-===================================================== */
+    /* -------------------------------------------------
+       DRAG & DROP
+    ------------------------------------------------- */
 
-currentAudio.addEventListener(
-    "ended",
-    function() {
+    record.addEventListener(
+        "dragover",
+        function (event) {
 
-        const record =
-            document.getElementById(
-                "record"
+            event.preventDefault();
+
+        }
+    );
+
+
+    record.addEventListener(
+        "drop",
+        function (event) {
+
+            event.preventDefault();
+
+
+            const data =
+                event.dataTransfer.getData(
+                    "text/plain"
+                );
+
+
+            if (!data) {
+                return;
+            }
+
+
+            try {
+
+                const song =
+                    JSON.parse(data);
+
+
+                loadSong(song);
+
+            }
+            catch (error) {
+
+                console.error(error);
+
+            }
+
+        }
+    );
+
+
+    /* -------------------------------------------------
+       TONEARM
+    ------------------------------------------------- */
+
+    tonearm.addEventListener(
+        "click",
+        function () {
+
+            if (!currentSong) {
+                return;
+            }
+
+
+            if (
+                audio.paused
+            ) {
+
+                tonearm.classList.remove(
+                    "lifted"
+                );
+
+
+                record.classList.add(
+                    "spinning"
+                );
+
+
+                const promise =
+                    audio.play();
+
+
+                if (
+                    promise &&
+                    typeof promise.catch === "function"
+                ) {
+
+                    promise.catch(
+                        function () {}
+                    );
+
+                }
+
+            }
+            else {
+
+                audio.pause();
+
+
+                tonearm.classList.add(
+                    "lifted"
+                );
+
+
+                record.classList.remove(
+                    "spinning"
+                );
+
+            }
+
+        }
+    );
+
+
+    /* -------------------------------------------------
+       AUDIO END
+    ------------------------------------------------- */
+
+    audio.addEventListener(
+        "ended",
+        function () {
+
+            record.classList.remove(
+                "spinning"
             );
 
 
-        const tonearm =
-            document.getElementById(
-                "tonearm"
+            tonearm.classList.add(
+                "lifted"
             );
+
+        }
+    );
+
+
+    /* -------------------------------------------------
+       STOP AUDIO
+    ------------------------------------------------- */
+
+    function stopAudio() {
+
+        audio.pause();
+
+
+        audio.currentTime = 0;
+
+
+        audio.removeAttribute(
+            "src"
+        );
+
+
+        audio.load();
 
 
         record.classList.remove(
@@ -2538,124 +1921,57 @@ currentAudio.addEventListener(
             "lifted"
         );
 
+
+        currentSong = null;
+
     }
-);
 
 
-/* =====================================================
-   BACK FROM PLAYER
-===================================================== */
+    /* -------------------------------------------------
+       ESCAPE HTML
+    ------------------------------------------------- */
 
-function goBackFromPlayer() {
+    function escapeHTML(value) {
 
-    /*
-       음악 정지
-    */
+        return String(value)
 
-    currentAudio.pause();
+            .replace(
+                /&/g,
+                "&amp;"
+            )
 
+            .replace(
+                /</g,
+                "&lt;"
+            )
 
-    currentAudio.currentTime =
-        0;
+            .replace(
+                />/g,
+                "&gt;"
+            )
 
+            .replace(
+                /"/g,
+                "&quot;"
+            )
 
-    currentAudio.removeAttribute(
-        "src"
-    );
+            .replace(
+                /'/g,
+                "&#039;"
+            );
 
-
-    currentAudio.load();
-
-
-    /*
-       LP 정지
-    */
-
-    document.getElementById(
-        "record"
-    ).classList.remove(
-        "spinning"
-    );
-
-
-    /*
-       톤암 올리기
-    */
-
-    document.getElementById(
-        "tonearm"
-    ).classList.add(
-        "lifted"
-    );
+    }
 
 
-    /*
-       현재 곡 초기화
-    */
+    /* -------------------------------------------------
+       INITIAL STATE
+    ------------------------------------------------- */
 
-    currentSong =
-        null;
+    showPage(opening);
 
-
-    /*
-       음악 목록
-    */
-
-    showPage(
-        "listenPage"
-    );
-}
-
-
-/* =====================================================
-   HTML ESCAPE
-===================================================== */
-
-function escapeHTML(text) {
-
-    return String(text)
-
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-
-        .replace(
-            /</g,
-            "&lt;"
-        )
-
-        .replace(
-            />/g,
-            "&gt;"
-        )
-
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-
-        .replace(
-            /'/g,
-            "&#039;"
-        );
-}
-
-
-/* =====================================================
-   START
-===================================================== */
-
-showPage(
-    "opening"
-);
-
+})();
 
 </script>
-
-
-</body>
-</html>
 """
 
 
@@ -2663,8 +1979,8 @@ showPage(
 # HTML 실행
 # =========================================================
 
-components.html(
+st.html(
     html,
-    height=1600,
-    scrolling=True
+    width="stretch",
+    unsafe_allow_javascript=True
 )

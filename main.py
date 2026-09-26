@@ -3,299 +3,70 @@ import urllib.parse
 import urllib.request
 import json
 import io
+import re
+import difflib
 import random
 import math
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 
-# =========================================================
-# 기본 설정
-# =========================================================
+# ============================================================
+# 1. PAGE SETTING
+# ============================================================
 
 st.set_page_config(
     page_title="RECORD ROOM",
     page_icon="🎵",
-    layout="wide",
-    initial_sidebar_state="collapsed",
+    layout="wide"
 )
 
 
-# =========================================================
-# 세션 상태
-# =========================================================
+# ============================================================
+# 2. SESSION STATE
+# ============================================================
 
 if "page" not in st.session_state:
     st.session_state.page = "home"
 
-if "search_results" not in st.session_state:
-    st.session_state.search_results = []
-
 if "search_query" not in st.session_state:
     st.session_state.search_query = ""
+
+if "search_results" not in st.session_state:
+    st.session_state.search_results = []
 
 if "selected_song" not in st.session_state:
     st.session_state.selected_song = None
 
-if "is_playing" not in st.session_state:
-    st.session_state.is_playing = False
+if "playing" not in st.session_state:
+    st.session_state.playing = False
 
 
-# =========================================================
-# 색상
-# =========================================================
+# ============================================================
+# 3. COLORS
+# ============================================================
 
-WOOD_DARK = "#24170F"
-WOOD = "#3A2417"
-WOOD_LIGHT = "#65432C"
-CREAM = "#F4E7CF"
-CREAM_DARK = "#D9C19D"
-GOLD = "#B68A4A"
-BROWN = "#754C2D"
-BLACK = "#111111"
-WHITE = "#FFFFFF"
+DARK = (28, 18, 11)
+DARK2 = (42, 27, 17)
+WOOD = (75, 47, 28)
+WOOD2 = (103, 66, 38)
+WOOD3 = (128, 84, 48)
 
+CREAM = (242, 226, 198)
+CREAM2 = (221, 198, 158)
 
-# =========================================================
-# Python으로만 만드는 기본 디자인
-# =========================================================
+GOLD = (183, 140, 72)
+GOLD2 = (211, 169, 94)
 
-st.markdown(
-    """
-    # 🎵 RECORD ROOM
-    """
-)
+BLACK = (12, 12, 12)
+WHITE = (249, 245, 235)
 
-st.caption("오늘의 음악을 한 장의 레코드처럼.")
 
-
-# =========================================================
-# iTunes API
-# =========================================================
-
-@st.cache_data(ttl=600)
-def request_json(url):
-    try:
-        request = urllib.request.Request(
-            url,
-            headers={
-                "User-Agent": "Mozilla/5.0"
-            }
-        )
-
-        with urllib.request.urlopen(request, timeout=10) as response:
-            data = response.read().decode("utf-8")
-
-        return json.loads(data)
-
-    except Exception:
-        return None
-
-
-@st.cache_data(ttl=600)
-def search_songs(keyword):
-    """
-    노래 제목 / 가수 이름 모두 검색
-    """
-
-    keyword = keyword.strip()
-
-    if not keyword:
-        return []
-
-    encoded = urllib.parse.quote(keyword)
-
-    url = (
-        "https://itunes.apple.com/search?"
-        f"term={encoded}"
-        "&country=KR"
-        "&media=music"
-        "&entity=song"
-        "&limit=30"
-    )
-
-    data = request_json(url)
-
-    if not data:
-        return []
-
-    results = data.get("results", [])
-
-    songs = []
-
-    for item in results:
-
-        track_name = item.get("trackName")
-        artist_name = item.get("artistName")
-
-        if not track_name or not artist_name:
-            continue
-
-        song = {
-            "track_name": track_name,
-            "artist_name": artist_name,
-            "album_name": item.get(
-                "collectionName",
-                "Unknown Album"
-            ),
-            "artwork": item.get(
-                "artworkUrl100",
-                ""
-            ).replace(
-                "100x100",
-                "600x600"
-            ),
-            "preview": item.get(
-                "previewUrl",
-                ""
-            ),
-            "track_url": item.get(
-                "trackViewUrl",
-                ""
-            ),
-            "artist_id": item.get(
-                "artistId"
-            ),
-        }
-
-        songs.append(song)
-
-    return songs
-
-
-@st.cache_data(ttl=600)
-def search_artist(keyword):
-    """
-    검색 결과가 없을 때 가수 자체를 찾아서
-    해당 가수의 곡을 가져오는 보조 검색
-    """
-
-    keyword = keyword.strip()
-
-    if not keyword:
-        return []
-
-    encoded = urllib.parse.quote(keyword)
-
-    url = (
-        "https://itunes.apple.com/search?"
-        f"term={encoded}"
-        "&country=KR"
-        "&media=music"
-        "&entity=musicArtist"
-        "&limit=10"
-    )
-
-    data = request_json(url)
-
-    if not data:
-        return []
-
-    artists = data.get("results", [])
-
-    for artist in artists:
-
-        artist_id = artist.get("artistId")
-
-        if not artist_id:
-            continue
-
-        songs_url = (
-            "https://itunes.apple.com/lookup?"
-            f"id={artist_id}"
-            "&entity=song"
-            "&country=KR"
-            "&limit=30"
-        )
-
-        songs_data = request_json(songs_url)
-
-        if not songs_data:
-            continue
-
-        songs = []
-
-        for item in songs_data.get("results", []):
-
-            if item.get("wrapperType") != "track":
-                continue
-
-            if item.get("kind") != "song":
-                continue
-
-            track_name = item.get("trackName")
-
-            if not track_name:
-                continue
-
-            songs.append(
-                {
-                    "track_name": track_name,
-                    "artist_name": item.get(
-                        "artistName",
-                        artist.get(
-                            "artistName",
-                            keyword
-                        )
-                    ),
-                    "album_name": item.get(
-                        "collectionName",
-                        "Unknown Album"
-                    ),
-                    "artwork": item.get(
-                        "artworkUrl100",
-                        ""
-                    ).replace(
-                        "100x100",
-                        "600x600"
-                    ),
-                    "preview": item.get(
-                        "previewUrl",
-                        ""
-                    ),
-                    "track_url": item.get(
-                        "trackViewUrl",
-                        ""
-                    ),
-                    "artist_id": artist_id,
-                }
-            )
-
-        if songs:
-            return songs
-
-    return []
-
-
-def search_music(keyword):
-
-    keyword = keyword.strip()
-
-    if not keyword:
-        return []
-
-    # 1차: 노래 검색
-    results = search_songs(keyword)
-
-    if results:
-        return results
-
-    # 2차: 가수 검색
-    results = search_artist(keyword)
-
-    if results:
-        return results
-
-    return []
-
-
-# =========================================================
-# 폰트
-# =========================================================
+# ============================================================
+# 4. FONT
+# ============================================================
 
 def get_font(size, bold=False):
-
-    paths = []
 
     if bold:
         paths = [
@@ -304,132 +75,834 @@ def get_font(size, bold=False):
         ]
     else:
         paths = [
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
         ]
 
     for path in paths:
         try:
             return ImageFont.truetype(path, size)
-        except Exception:
+        except:
             pass
 
     return ImageFont.load_default()
 
 
-# =========================================================
-# 레코드판 이미지
-# =========================================================
+# ============================================================
+# 5. WOOD TEXTURE
+# ============================================================
 
-@st.cache_data
-def create_vinyl_image(size=650):
+def create_wood_background(width=1400, height=800):
 
-    image = Image.new(
+    img = Image.new(
         "RGB",
-        (size, size),
-        (36, 23, 15)
+        (width, height),
+        DARK2
     )
 
-    draw = ImageDraw.Draw(image)
+    draw = ImageDraw.Draw(img)
 
-    center = size // 2
+    random.seed(10)
 
-    # 바깥쪽 그림자
-    draw.ellipse(
-        (
-            15,
-            15,
-            size - 15,
-            size - 15
-        ),
-        fill=(12, 10, 9)
+    # 나무결
+    for _ in range(90):
+
+        y = random.randint(0, height)
+
+        points = []
+
+        for x in range(0, width + 40, 40):
+
+            yy = y + random.randint(-12, 12)
+
+            points.append((x, yy))
+
+        draw.line(
+            points,
+            fill=random.choice(
+                [
+                    WOOD,
+                    WOOD2,
+                    WOOD3,
+                    (56, 34, 20),
+                ]
+            ),
+            width=random.randint(1, 4)
+        )
+
+    # 어두운 테두리
+    draw.rectangle(
+        (0, 0, width - 1, height - 1),
+        outline=DARKER,
+        width=18
     )
 
-    # 레코드판
-    draw.ellipse(
+    # 빈티지 빛
+    overlay = Image.new(
+        "RGBA",
+        (width, height),
+        (0, 0, 0, 0)
+    )
+
+    odraw = ImageDraw.Draw(overlay)
+
+    for r in range(700, 100, -25):
+
+        alpha = int(
+            3 + (700 - r) / 40
+        )
+
+        odraw.ellipse(
+            (
+                width // 2 - r,
+                height // 2 - r,
+                width // 2 + r,
+                height // 2 + r
+            ),
+            fill=(255, 220, 170, alpha)
+        )
+
+    img = Image.alpha_composite(
+        img.convert("RGBA"),
+        overlay
+    ).convert("RGB")
+
+    return img
+
+
+# ============================================================
+# 6. TITLE IMAGE
+# ============================================================
+
+def create_title():
+
+    width = 1100
+    height = 240
+
+    img = Image.new(
+        "RGB",
+        (width, height),
+        DARK
+    )
+
+    draw = ImageDraw.Draw(img)
+
+    title_font = get_font(
+        74,
+        True
+    )
+
+    sub_font = get_font(
+        24,
+        False
+    )
+
+    title = "RECORD ROOM"
+
+    bbox = draw.textbbox(
+        (0, 0),
+        title,
+        font=title_font
+    )
+
+    tw = bbox[2] - bbox[0]
+
+    draw.text(
         (
-            25,
-            25,
-            size - 25,
-            size - 25
+            (width - tw) // 2,
+            45
         ),
-        fill=(18, 18, 18),
-        outline=(70, 70, 70),
+        title,
+        fill=CREAM,
+        font=title_font
+    )
+
+    subtitle = "오늘의 음악을 한 장의 레코드처럼."
+
+    bbox = draw.textbbox(
+        (0, 0),
+        subtitle,
+        font=sub_font
+    )
+
+    sw = bbox[2] - bbox[0]
+
+    draw.text(
+        (
+            (width - sw) // 2,
+            145
+        ),
+        subtitle,
+        fill=CREAM2,
+        font=sub_font
+    )
+
+    draw.line(
+        (
+            180,
+            195,
+            width - 180,
+            195
+        ),
+        fill=GOLD,
         width=2
     )
 
-    # 레코드 홈
-    for r in range(
-        int(size * 0.43),
-        int(size * 0.95),
-        13
+    return img
+
+
+# ============================================================
+# 7. ITUNES API
+# ============================================================
+
+@st.cache_data(ttl=600)
+def api_request(url):
+
+    try:
+
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent":
+                "Mozilla/5.0"
+            }
+        )
+
+        with urllib.request.urlopen(
+            req,
+            timeout=12
+        ) as response:
+
+            raw = response.read()
+
+        return json.loads(
+            raw.decode("utf-8")
+        )
+
+    except Exception:
+
+        return None
+
+
+# ============================================================
+# 8. TEXT NORMALIZATION
+# ============================================================
+
+def normalize(text):
+
+    if not text:
+        return ""
+
+    text = str(text).lower().strip()
+
+    # 괄호 제거
+    text = re.sub(
+        r"\([^)]*\)",
+        " ",
+        text
+    )
+
+    text = re.sub(
+        r"\[[^\]]*\]",
+        " ",
+        text
+    )
+
+    # 특수문자 제거
+    text = re.sub(
+        r"[^0-9a-z가-힣]+",
+        "",
+        text
+    )
+
+    return text
+
+
+def similarity(a, b):
+
+    a = normalize(a)
+    b = normalize(b)
+
+    if not a or not b:
+        return 0
+
+    if a == b:
+        return 1.0
+
+    if a in b:
+        return 0.9
+
+    if b in a:
+        return 0.85
+
+    return difflib.SequenceMatcher(
+        None,
+        a,
+        b
+    ).ratio()
+
+
+# ============================================================
+# 9. KNOWN ARTIST ALIASES
+# ============================================================
+
+ARTIST_ALIASES = {
+
+    "뉴진스": [
+        "뉴진스",
+        "newjeans"
+    ],
+
+    "newjeans": [
+        "뉴진스",
+        "newjeans"
+    ],
+
+    "아이유": [
+        "아이유",
+        "iu"
+    ],
+
+    "iu": [
+        "아이유",
+        "iu"
+    ],
+
+    "지코": [
+        "지코",
+        "zico"
+    ],
+
+    "zico": [
+        "지코",
+        "zico"
+    ],
+
+    "르세라핌": [
+        "르세라핌",
+        "le sserafim",
+        "lesserafim"
+    ],
+
+    "aespa": [
+        "aespa",
+        "에스파"
+    ],
+
+    "에스파": [
+        "aespa",
+        "에스파"
+    ],
+
+    "아이브": [
+        "아이브",
+        "ive"
+    ],
+
+    "ive": [
+        "아이브",
+        "ive"
+    ],
+
+    "블랙핑크": [
+        "블랙핑크",
+        "blackpink"
+    ],
+
+    "blackpink": [
+        "블랙핑크",
+        "blackpink"
+    ],
+
+    "bts": [
+        "bts",
+        "방탄소년단"
+    ],
+
+    "방탄소년단": [
+        "bts",
+        "방탄소년단"
+    ]
+}
+
+
+def is_artist_match(query, artist):
+
+    q = normalize(query)
+    a = normalize(artist)
+
+    if not q or not a:
+        return False
+
+    # 알려진 가수
+    if q in ARTIST_ALIASES:
+
+        for alias in ARTIST_ALIASES[q]:
+
+            if normalize(alias) == a:
+                return True
+
+        return False
+
+    # 일반 검색
+    score = similarity(
+        query,
+        artist
+    )
+
+    return score >= 0.72
+
+
+# ============================================================
+# 10. SONG SEARCH
+# ============================================================
+
+@st.cache_data(ttl=600)
+def search_song_api(query):
+
+    encoded = urllib.parse.quote(
+        query
+    )
+
+    url = (
+        "https://itunes.apple.com/search?"
+        f"term={encoded}"
+        "&country=KR"
+        "&media=music"
+        "&entity=song"
+        "&limit=50"
+    )
+
+    data = api_request(url)
+
+    if not data:
+        return []
+
+    results = []
+
+    for item in data.get(
+        "results",
+        []
     ):
 
-        box = (
-            center - r,
-            center - r,
-            center + r,
-            center + r
+        if item.get(
+            "wrapperType"
+        ) != "track":
+
+            continue
+
+        if item.get(
+            "kind"
+        ) != "song":
+
+            continue
+
+        track = item.get(
+            "trackName",
+            ""
         )
 
-        draw.ellipse(
-            box,
-            outline=(35, 35, 35),
-            width=1
+        artist = item.get(
+            "artistName",
+            ""
         )
 
-    # 중앙 라벨
-    label_radius = int(size * 0.15)
+        if not track or not artist:
+            continue
 
-    draw.ellipse(
-        (
-            center - label_radius,
-            center - label_radius,
-            center + label_radius,
-            center + label_radius
-        ),
-        fill=(137, 89, 46),
-        outline=(190, 143, 84),
-        width=3
+        results.append(
+            {
+                "track_name": track,
+                "artist_name": artist,
+                "album_name": item.get(
+                    "collectionName",
+                    ""
+                ),
+                "artwork": item.get(
+                    "artworkUrl100",
+                    ""
+                ).replace(
+                    "100x100",
+                    "600x600"
+                ),
+                "preview": item.get(
+                    "previewUrl",
+                    ""
+                ),
+                "track_url": item.get(
+                    "trackViewUrl",
+                    ""
+                ),
+                "artist_id": item.get(
+                    "artistId"
+                ),
+            }
+        )
+
+    return results
+
+
+# ============================================================
+# 11. ARTIST SEARCH
+# ============================================================
+
+@st.cache_data(ttl=600)
+def search_artist_api(query):
+
+    encoded = urllib.parse.quote(
+        query
     )
 
-    # 중앙 구멍
-    hole = 13
-
-    draw.ellipse(
-        (
-            center - hole,
-            center - hole,
-            center + hole,
-            center + hole
-        ),
-        fill=(12, 12, 12)
+    # 핵심:
+    # 그냥 musicArtist 첫 결과를 가져오지 않음
+    # artistTerm으로 가수 검색
+    url = (
+        "https://itunes.apple.com/search?"
+        f"term={encoded}"
+        "&country=KR"
+        "&media=music"
+        "&entity=musicArtist"
+        "&attribute=artistTerm"
+        "&limit=20"
     )
 
-    return image
+    data = api_request(url)
+
+    if not data:
+        return []
+
+    artists = data.get(
+        "results",
+        []
+    )
+
+    # 점수 계산
+    scored = []
+
+    for artist in artists:
+
+        name = artist.get(
+            "artistName",
+            ""
+        )
+
+        if not name:
+            continue
+
+        if is_artist_match(
+            query,
+            name
+        ):
+
+            score = similarity(
+                query,
+                name
+            )
+
+            scored.append(
+                (
+                    score,
+                    artist
+                )
+            )
+
+    # 가장 비슷한 가수부터
+    scored.sort(
+        key=lambda x: x[0],
+        reverse=True
+    )
+
+    # 점수가 낮으면 아예 버림
+    return [
+        artist
+        for score, artist in scored
+        if score >= 0.72
+    ][:3]
 
 
-# =========================================================
-# 앨범 커버가 들어간 레코드판
-# =========================================================
+# ============================================================
+# 12. ARTIST SONGS
+# ============================================================
 
-@st.cache_data
-def create_record_with_cover(cover_url, size=650):
+@st.cache_data(ttl=600)
+def get_artist_songs(
+    artist_id
+):
 
-    record = create_vinyl_image(size).copy()
+    if not artist_id:
+        return []
 
-    if cover_url:
+    url = (
+        "https://itunes.apple.com/lookup?"
+        f"id={artist_id}"
+        "&entity=song"
+        "&country=KR"
+        "&limit=50"
+    )
 
-        try:
+    data = api_request(url)
 
-            request = urllib.request.Request(
-                cover_url,
+    if not data:
+        return []
+
+    songs = []
+
+    for item in data.get(
+        "results",
+        []
+    ):
+
+        if item.get(
+            "wrapperType"
+        ) != "track":
+
+            continue
+
+        if item.get(
+            "kind"
+        ) != "song":
+
+            continue
+
+        track = item.get(
+            "trackName",
+            ""
+        )
+
+        artist = item.get(
+            "artistName",
+            ""
+        )
+
+        if not track or not artist:
+            continue
+
+        songs.append(
+            {
+                "track_name": track,
+                "artist_name": artist,
+                "album_name": item.get(
+                    "collectionName",
+                    ""
+                ),
+                "artwork": item.get(
+                    "artworkUrl100",
+                    ""
+                ).replace(
+                    "100x100",
+                    "600x600"
+                ),
+                "preview": item.get(
+                    "previewUrl",
+                    ""
+                ),
+                "track_url": item.get(
+                    "trackViewUrl",
+                    ""
+                ),
+                "artist_id": artist_id,
+            }
+        )
+
+    return songs
+
+
+# ============================================================
+# 13. FINAL SEARCH
+# ============================================================
+
+def search_music(query):
+
+    query = query.strip()
+
+    if not query:
+        return []
+
+
+    # --------------------------------------------------------
+    # A. 유명 가수의 경우 가수 검색을 먼저
+    # --------------------------------------------------------
+
+    if normalize(query) in ARTIST_ALIASES:
+
+        artists = search_artist_api(
+            query
+        )
+
+        if artists:
+
+            artist = artists[0]
+
+            artist_id = artist.get(
+                "artistId"
+            )
+
+            songs = get_artist_songs(
+                artist_id
+            )
+
+            # 혹시 API가 이상한 artist를 반환하면
+            # 다시 한 번 가수명 검증
+            songs = [
+                song
+                for song in songs
+                if is_artist_match(
+                    query,
+                    song["artist_name"]
+                )
+            ]
+
+            if songs:
+                return songs
+
+
+    # --------------------------------------------------------
+    # B. 노래 검색
+    # --------------------------------------------------------
+
+    songs = search_song_api(
+        query
+    )
+
+    if songs:
+
+        # 가수 검색어로 판단되는 경우
+        artist_results = [
+            song
+            for song in songs
+            if is_artist_match(
+                query,
+                song["artist_name"]
+            )
+        ]
+
+        if artist_results:
+
+            return artist_results[:30]
+
+        # 노래 제목 검색
+        scored = []
+
+        for song in songs:
+
+            score = max(
+                similarity(
+                    query,
+                    song["track_name"]
+                ),
+                similarity(
+                    query,
+                    song["album_name"]
+                )
+            )
+
+            scored.append(
+                (
+                    score,
+                    song
+                )
+            )
+
+        scored.sort(
+            key=lambda x: x[0],
+            reverse=True
+        )
+
+        return [
+            song
+            for score, song in scored
+            if score >= 0.35
+        ][:30]
+
+
+    # --------------------------------------------------------
+    # C. 최종 가수 검색
+    # --------------------------------------------------------
+
+    artists = search_artist_api(
+        query
+    )
+
+    if artists:
+
+        artist = artists[0]
+
+        songs = get_artist_songs(
+            artist.get("artistId")
+        )
+
+        songs = [
+            song
+            for song in songs
+            if is_artist_match(
+                query,
+                song["artist_name"]
+            )
+        ]
+
+        if songs:
+            return songs[:30]
+
+
+    return []
+
+
+# ============================================================
+# 14. ALBUM COVER CARD
+# ============================================================
+
+def make_album_card(
+    song,
+    width=330,
+    height=430
+):
+
+    img = Image.new(
+        "RGB",
+        (width, height),
+        DARK2
+    )
+
+    draw = ImageDraw.Draw(img)
+
+    # 바깥 프레임
+    draw.rounded_rectangle(
+        (
+            5,
+            5,
+            width - 5,
+            height - 5
+        ),
+        radius=18,
+        fill=(54, 34, 21),
+        outline=GOLD,
+        width=2
+    )
+
+    # 커버
+    cover_size = width - 50
+
+    cover_x = 25
+    cover_y = 22
+
+    try:
+
+        url = song.get(
+            "artwork",
+            ""
+        )
+
+        if url:
+
+            req = urllib.request.Request(
+                url,
                 headers={
-                    "User-Agent": "Mozilla/5.0"
+                    "User-Agent":
+                    "Mozilla/5.0"
                 }
             )
 
             with urllib.request.urlopen(
-                request,
+                req,
                 timeout=10
             ) as response:
 
@@ -439,7 +912,219 @@ def create_record_with_cover(cover_url, size=650):
                 io.BytesIO(data)
             ).convert("RGB")
 
-            cover_size = int(size * 0.27)
+            cover = cover.resize(
+                (
+                    cover_size,
+                    cover_size
+                )
+            )
+
+            img.paste(
+                cover,
+                (
+                    cover_x,
+                    cover_y
+                )
+            )
+
+    except:
+
+        draw.rectangle(
+            (
+                cover_x,
+                cover_y,
+                cover_x + cover_size,
+                cover_y + cover_size
+            ),
+            fill=(35, 25, 18)
+        )
+
+        note_font = get_font(
+            70,
+            True
+        )
+
+        draw.text(
+            (
+                width // 2 - 25,
+                160
+            ),
+            "♪",
+            fill=GOLD,
+            font=note_font
+        )
+
+
+    # 제목
+    title_font = get_font(
+        21,
+        True
+    )
+
+    artist_font = get_font(
+        17,
+        False
+    )
+
+    title = song.get(
+        "track_name",
+        ""
+    )
+
+    artist = song.get(
+        "artist_name",
+        ""
+    )
+
+    # 긴 제목 자르기
+    if len(title) > 25:
+        title = title[:25] + "..."
+
+    if len(artist) > 24:
+        artist = artist[:24] + "..."
+
+    draw.text(
+        (
+            25,
+            height - 91
+        ),
+        title,
+        fill=CREAM,
+        font=title_font
+    )
+
+    draw.text(
+        (
+            25,
+            height - 56
+        ),
+        artist,
+        fill=CREAM2,
+        font=artist_font
+    )
+
+    return img
+
+
+# ============================================================
+# 15. VINYL
+# ============================================================
+
+def make_vinyl(
+    cover_url=None,
+    size=680
+):
+
+    img = Image.new(
+        "RGB",
+        (
+            size,
+            size
+        ),
+        DARK
+    )
+
+    draw = ImageDraw.Draw(img)
+
+    cx = size // 2
+    cy = size // 2
+
+    # 그림자
+    draw.ellipse(
+        (
+            25,
+            25,
+            size - 10,
+            size - 10
+        ),
+        fill=(8, 7, 6)
+    )
+
+    # LP
+    draw.ellipse(
+        (
+            10,
+            10,
+            size - 25,
+            size - 25
+        ),
+        fill=VINYL,
+        outline=(76, 76, 76),
+        width=3
+    )
+
+    # 레코드 홈
+    for radius in range(
+        105,
+        size // 2 - 20,
+        13
+    ):
+
+        draw.ellipse(
+            (
+                cx - radius,
+                cy - radius,
+                cx + radius,
+                cy + radius
+            ),
+            outline=(37, 37, 37),
+            width=1
+        )
+
+    # 빛 반사
+    draw.arc(
+        (
+            70,
+            70,
+            size - 85,
+            size - 85
+        ),
+        start=215,
+        end=320,
+        fill=(70, 70, 70),
+        width=3
+    )
+
+    # 중앙 라벨
+    label = 105
+
+    draw.ellipse(
+        (
+            cx - label,
+            cy - label,
+            cx + label,
+            cy + label
+        ),
+        fill=(142, 89, 43),
+        outline=GOLD2,
+        width=4
+    )
+
+    # 커버
+    if cover_url:
+
+        try:
+
+            req = urllib.request.Request(
+                cover_url,
+                headers={
+                    "User-Agent":
+                    "Mozilla/5.0"
+                }
+            )
+
+            with urllib.request.urlopen(
+                req,
+                timeout=10
+            ) as response:
+
+                data = response.read()
+
+            cover = Image.open(
+                io.BytesIO(data)
+            ).convert("RGB")
+
+            cover_size = 185
 
             cover = cover.resize(
                 (
@@ -448,74 +1133,150 @@ def create_record_with_cover(cover_url, size=650):
                 )
             )
 
-            x = (
-                size - cover_size
-            ) // 2
-
-            y = (
-                size - cover_size
-            ) // 2
-
-            record.paste(
+            img.paste(
                 cover,
-                (x, y)
+                (
+                    cx - cover_size // 2,
+                    cy - cover_size // 2
+                )
             )
 
-        except Exception:
+        except:
             pass
 
-    return record
+    # 중앙 구멍
+    hole = 10
+
+    draw.ellipse(
+        (
+            cx - hole,
+            cy - hole,
+            cx + hole,
+            cy + hole
+        ),
+        fill=BLACK
+    )
+
+    return img
 
 
-# =========================================================
-# 홈 화면
-# =========================================================
+# ============================================================
+# 16. TONEARM IMAGE
+# ============================================================
+
+def make_tonearm(
+    width=720,
+    height=680
+):
+
+    img = Image.new(
+        "RGBA",
+        (
+            width,
+            height
+        ),
+        (0, 0, 0, 0)
+    )
+
+    draw = ImageDraw.Draw(img)
+
+    # 받침대
+    draw.ellipse(
+        (
+            555,
+            65,
+            665,
+            175
+        ),
+        fill=(92, 61, 36),
+        outline=GOLD2,
+        width=3
+    )
+
+    draw.ellipse(
+        (
+            585,
+            95,
+            635,
+            145
+        ),
+        fill=(35, 25, 18)
+    )
+
+    # 톤암
+    draw.line(
+        (
+            610,
+            120,
+            510,
+            170,
+            430,
+            245,
+            365,
+            330
+        ),
+        fill=(194, 169, 128),
+        width=13
+    )
+
+    # 바늘
+    draw.polygon(
+        [
+            (355, 318),
+            (375, 325),
+            (360, 355),
+        ],
+        fill=(190, 160, 115)
+    )
+
+    return img
+
+
+# ============================================================
+# 17. HOME
+# ============================================================
 
 def show_home():
 
-    st.write("")
-    st.write("")
-    st.write("")
-
-    col1, col2, col3 = st.columns(
-        [1, 2, 1]
+    st.image(
+        create_wood_background(
+            1400,
+            720
+        ),
+        use_container_width=True
     )
 
-    with col2:
+    st.image(
+        create_title(),
+        use_container_width=True
+    )
 
-        st.markdown(
-            "## 🎵 RECORD ROOM"
-        )
+    st.write("")
 
-        st.write(
-            "오늘의 음악을 한 장의 레코드처럼."
-        )
+    c1, c2, c3 = st.columns(
+        [1, 1, 1]
+    )
 
-        st.write("")
+    with c2:
 
         if st.button(
             "ENTER ROOM",
             use_container_width=True
         ):
+
             st.session_state.page = "choice"
             st.rerun()
 
-        st.write("")
-        st.caption(
-            "A little room for your favorite music."
-        )
 
-
-# =========================================================
-# 선택 화면
-# =========================================================
+# ============================================================
+# 18. CHOICE
+# ============================================================
 
 def show_choice():
 
-    st.subheader("RECORD ROOM")
-
-    st.write(
-        "무엇을 할까요?"
+    st.image(
+        create_title(),
+        use_container_width=True
     )
 
     st.write("")
@@ -524,8 +1285,24 @@ def show_choice():
 
     with left:
 
+        st.image(
+            create_album_card(
+                {
+                    "track_name":
+                    "MUSIC LIBRARY",
+                    "artist_name":
+                    "SEARCH YOUR MUSIC",
+                    "artwork":
+                    ""
+                },
+                500,
+                500
+            ),
+            use_container_width=True
+        )
+
         if st.button(
-            "🎧 노래듣기",
+            "🎧  노래듣기",
             use_container_width=True
         ):
 
@@ -534,8 +1311,24 @@ def show_choice():
 
     with right:
 
+        st.image(
+            create_album_card(
+                {
+                    "track_name":
+                    "RECOMMEND",
+                    "artist_name":
+                    "FIND YOUR MOOD",
+                    "artwork":
+                    ""
+                },
+                500,
+                500
+            ),
+            use_container_width=True
+        )
+
         if st.button(
-            "💿 노래 추천받기",
+            "💿  노래 추천받기",
             use_container_width=True
         ):
 
@@ -545,45 +1338,54 @@ def show_choice():
     st.write("")
 
     if st.button(
-        "← 처음으로"
+        "← 처음으로",
+        use_container_width=True
     ):
 
         st.session_state.page = "home"
         st.rerun()
 
 
-# =========================================================
-# 검색 화면
-# =========================================================
+# ============================================================
+# 19. MUSIC LIBRARY
+# ============================================================
 
 def show_listen():
 
-    st.subheader("🎧 MUSIC LIBRARY")
-
-    st.write(
-        "가수 이름이나 노래 제목을 검색해보세요."
+    st.image(
+        create_title(
+        ),
+        use_container_width=True
     )
 
     st.write("")
 
-    # form을 사용해서 검색창에서 엔터를 눌러도 검색되게 함
+    st.subheader(
+        "MUSIC LIBRARY"
+    )
+
+    st.caption(
+        "가수 이름이나 노래 제목을 검색하세요."
+    )
+
     with st.form(
-        "music_search_form"
+        "search_form"
     ):
 
         query = st.text_input(
-            "검색",
+            "검색어",
             value=st.session_state.search_query,
-            placeholder="예: 아이유 / 뉴진스 / 지코 / Love wins all",
+            placeholder=
+            "아이유 / 뉴진스 / 지코 / Love wins all",
             label_visibility="collapsed"
         )
 
-        search_button = st.form_submit_button(
+        submitted = st.form_submit_button(
             "🔎 SEARCH",
             use_container_width=True
         )
 
-    if search_button:
+    if submitted:
 
         query = query.strip()
 
@@ -593,17 +1395,15 @@ def show_listen():
 
             st.session_state.search_results = []
 
-            st.warning(
-                "검색어를 입력해주세요."
-            )
-
         else:
 
             with st.spinner(
                 f"'{query}' 검색 중..."
             ):
 
-                results = search_music(query)
+                results = search_music(
+                    query
+                )
 
             st.session_state.search_results = results
 
@@ -611,44 +1411,41 @@ def show_listen():
 
     st.write("")
 
-    # 검색 결과가 없는 최초 화면
     if not results:
 
         if st.session_state.search_query:
 
-            st.info(
-                f"'{st.session_state.search_query}'에 대한 검색 결과가 없습니다."
+            st.warning(
+                f"'{st.session_state.search_query}'에 맞는 음악을 찾지 못했어요."
             )
 
-            st.write(
-                "다른 가수 이름이나 노래 제목으로 검색해보세요."
+            st.caption(
+                "가수 이름이나 정확한 노래 제목으로 다시 검색해보세요."
             )
 
         else:
 
-            st.write("")
-            st.write("")
-            st.write("🎵")
+            st.image(
+                create_vinyl(),
+                width=360
+            )
+
             st.subheader(
-                "검색해서 나만의 레코드를 찾아보세요."
+                "SEARCH FOR A RECORD"
             )
 
-            st.write(
-                "가수 이름 또는 노래 제목을 입력하면 "
-                "음악 정보를 가져옵니다."
+            st.caption(
+                "검색 결과에서 원하는 앨범을 골라보세요."
             )
-
-        st.write("")
 
     else:
 
         st.success(
-            f"검색 결과 {len(results)}개"
+            f"{len(results)}개의 음악을 찾았어요."
         )
 
         st.write("")
 
-        # 한 줄에 3개
         for start in range(
             0,
             len(results),
@@ -659,54 +1456,48 @@ def show_listen():
                 start:start + 3
             ]
 
-            columns = st.columns(
+            cols = st.columns(
                 len(row)
             )
 
-            for col, song in zip(
-                columns,
-                row
+            for idx, (
+                col,
+                song
+            ) in enumerate(
+                zip(
+                    cols,
+                    row
+                )
             ):
 
                 with col:
 
-                    if song["artwork"]:
-
-                        st.image(
-                            song["artwork"],
-                            use_container_width=True
-                        )
-
-                    st.write(
-                        f"**{song['track_name']}**"
-                    )
-
-                    st.caption(
-                        song["artist_name"]
-                    )
-
-                    st.caption(
-                        song["album_name"]
+                    st.image(
+                        create_album_card(
+                            song
+                        ),
+                        use_container_width=True
                     )
 
                     if st.button(
                         "💿 레코드에 올리기",
-                        key=f"select_{start}_{song['track_name']}_{song['artist_name']}",
+                        key=
+                        f"pick_{start}_{idx}",
                         use_container_width=True
                     ):
 
                         st.session_state.selected_song = song
-                        st.session_state.is_playing = True
+                        st.session_state.playing = True
                         st.session_state.page = "player"
 
                         st.rerun()
 
-                    st.write("")
-
+    st.write("")
     st.divider()
 
     if st.button(
-        "← 메뉴로 돌아가기"
+        "← 메뉴로",
+        use_container_width=True
     ):
 
         st.session_state.page = "choice"
@@ -716,9 +1507,9 @@ def show_listen():
         st.rerun()
 
 
-# =========================================================
-# 플레이어 화면
-# =========================================================
+# ============================================================
+# 20. PLAYER
+# ============================================================
 
 def show_player():
 
@@ -730,39 +1521,42 @@ def show_player():
         st.rerun()
         return
 
-    st.subheader("💿 RECORD PLAYER")
+    st.image(
+        create_title(),
+        use_container_width=True
+    )
 
     st.write("")
 
     left, right = st.columns(
-        [1.25, 1]
+        [1.4, 1]
     )
-
-    # -----------------------------------------------------
-    # 왼쪽 : 레코드
-    # -----------------------------------------------------
 
     with left:
 
-        record_image = create_record_with_cover(
-            song.get("artwork", "")
-        )
-
         st.image(
-            record_image,
+            make_vinyl(
+                song.get(
+                    "artwork",
+                    ""
+                )
+            ),
             use_container_width=True
         )
 
-    # -----------------------------------------------------
-    # 오른쪽 : 음악 정보
-    # -----------------------------------------------------
+        st.image(
+            make_tonearm(),
+            use_container_width=True
+        )
 
     with right:
 
         st.write("")
         st.write("")
 
-        st.caption("NOW PLAYING")
+        st.caption(
+            "NOW PLAYING"
+        )
 
         st.title(
             song["track_name"]
@@ -773,23 +1567,30 @@ def show_player():
         )
 
         st.write(
-            song["album_name"]
+            song.get(
+                "album_name",
+                ""
+            )
         )
 
         st.write("")
-
         st.divider()
 
-        if song.get("preview"):
+        if song.get(
+            "preview"
+        ):
 
             st.write(
-                "🎵 30초 미리듣기"
+                "🎵  RECORD PREVIEW"
             )
 
             st.audio(
                 song["preview"],
-                format="audio/mp4",
-                start_time=0
+                format="audio/mp4"
+            )
+
+            st.caption(
+                "Apple Music에서 제공되는 미리듣기입니다."
             )
 
         else:
@@ -805,91 +1606,90 @@ def show_player():
             use_container_width=True
         ):
 
-            st.session_state.is_playing = False
-
+            st.session_state.playing = False
             st.session_state.selected_song = None
-
             st.session_state.page = "listen"
 
             st.rerun()
-
-        st.write("")
 
         if st.button(
             "← 음악 목록으로",
             use_container_width=True
         ):
 
-            st.session_state.is_playing = False
-
+            st.session_state.playing = False
             st.session_state.selected_song = None
-
             st.session_state.page = "listen"
 
             st.rerun()
 
 
-# =========================================================
-# 추천 화면
-# =========================================================
+# ============================================================
+# 21. RECOMMEND
+# ============================================================
 
 def show_recommend():
 
-    st.subheader(
-        "💿 MUSIC RECOMMENDATION"
-    )
-
-    st.write(
-        "오늘 듣고 싶은 분위기를 골라보세요."
+    st.image(
+        create_title(),
+        use_container_width=True
     )
 
     st.write("")
 
+    st.subheader(
+        "CHOOSE YOUR MOOD"
+    )
+
     moods = {
+
         "🌙 새벽 감성": [
             "아이유",
             "검정치마",
-            "실리카겔",
+            "실리카겔"
         ],
-        "☀️ 기분 좋은 날": [
+
+        "💗 설레는 날": [
+            "아이유",
             "뉴진스",
-            "AKMU",
-            "볼빨간사춘기",
+            "AKMU"
         ],
+
         "🖤 힙합": [
             "지코",
             "크러쉬",
-            "빈지노",
+            "빈지노"
         ],
-        "💗 설레는 날": [
-            "아이유",
-            "DAY6",
-            "AKMU",
-        ],
+
+        "☀️ 기분 좋은 날": [
+            "뉴진스",
+            "아이브",
+            "AKMU"
+        ]
     }
 
-    mood_names = list(
+    names = list(
         moods.keys()
     )
 
-    for i in range(
+    for start in range(
         0,
-        len(mood_names),
+        len(names),
         2
     ):
 
-        columns = st.columns(2)
+        cols = st.columns(2)
 
         for col, mood in zip(
-            columns,
-            mood_names[i:i + 2]
+            cols,
+            names[start:start + 2]
         ):
 
             with col:
 
                 if st.button(
                     mood,
-                    key=f"mood_{mood}",
+                    key=f"mood_{start}_{mood}",
                     use_container_width=True
                 ):
 
@@ -898,7 +1698,7 @@ def show_recommend():
                     )
 
                     with st.spinner(
-                        f"{artist} 검색 중..."
+                        f"{artist}의 음악을 찾는 중..."
                     ):
 
                         results = search_music(
@@ -907,36 +1707,55 @@ def show_recommend():
 
                     if results:
 
-                        song = random.choice(
-                            results
-                        )
+                        # 실제 artist 검증
+                        valid = [
+                            song
+                            for song in results
+                            if is_artist_match(
+                                artist,
+                                song["artist_name"]
+                            )
+                        ]
 
-                        st.session_state.selected_song = song
-                        st.session_state.page = "player"
+                        if valid:
 
-                        st.rerun()
+                            song = random.choice(
+                                valid
+                            )
+
+                            st.session_state.selected_song = song
+                            st.session_state.playing = True
+                            st.session_state.page = "player"
+
+                            st.rerun()
+
+                        else:
+
+                            st.error(
+                                "추천 음악을 정확하게 찾지 못했어요."
+                            )
 
                     else:
 
                         st.error(
-                            "추천 음악을 불러오지 못했습니다."
+                            "음악을 불러오지 못했어요."
                         )
 
     st.write("")
-
     st.divider()
 
     if st.button(
-        "← 메뉴로 돌아가기"
+        "← 메뉴로",
+        use_container_width=True
     ):
 
         st.session_state.page = "choice"
         st.rerun()
 
 
-# =========================================================
-# 페이지 실행
-# =========================================================
+# ============================================================
+# 22. RUN
+# ============================================================
 
 if st.session_state.page == "home":
 

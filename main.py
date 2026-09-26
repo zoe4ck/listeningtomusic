@@ -2,18 +2,23 @@ import streamlit as st
 import urllib.parse
 import urllib.request
 import json
-import time
+import io
+import math
+
+from PIL import Image, ImageDraw, ImageFilter
+
 
 # ============================================================
-# PAGE SETTINGS
+# PAGE
 # ============================================================
 
 st.set_page_config(
     page_title="RECORD ROOM",
-    page_icon="🎵",
+    page_icon="♫",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+
 
 # ============================================================
 # SESSION STATE
@@ -42,14 +47,552 @@ def go(page):
 
 
 # ============================================================
-# MUSIC API
+# BASIC DESIGN
+# ============================================================
+
+def room_title(kicker, title, description=""):
+    st.write("")
+
+    st.caption(
+        kicker.upper()
+    )
+
+    st.title(
+        title
+    )
+
+    if description:
+        st.write(
+            description
+        )
+
+    st.divider()
+
+
+def wood_panel():
+    """
+    Streamlit 기본 container를 이용한
+    빈티지 패널 느낌의 구분용 영역
+    """
+    return st.container(
+        border=True
+    )
+
+
+# ============================================================
+# LP IMAGE GENERATOR
+# ============================================================
+
+@st.cache_data(max_entries=100)
+def make_record_image(
+    cover_url,
+    size=720
+):
+    """
+    실제 앨범 커버를 LP 중앙 라벨에 넣어서
+    레코드판 이미지를 Python/PIL로 생성한다.
+    """
+
+    # --------------------------------------------------------
+    # 배경
+    # --------------------------------------------------------
+
+    image = Image.new(
+        "RGB",
+        (size, size),
+        (22, 18, 15)
+    )
+
+    draw = ImageDraw.Draw(
+        image
+    )
+
+    center = size // 2
+
+    # --------------------------------------------------------
+    # LP 바깥 그림자
+    # --------------------------------------------------------
+
+    shadow = Image.new(
+        "RGBA",
+        (size, size),
+        (0, 0, 0, 0)
+    )
+
+    shadow_draw = ImageDraw.Draw(
+        shadow
+    )
+
+    shadow_draw.ellipse(
+        (
+            45,
+            50,
+            size - 25,
+            size - 20
+        ),
+        fill=(0, 0, 0, 180)
+    )
+
+    shadow = shadow.filter(
+        ImageFilter.GaussianBlur(22)
+    )
+
+    image = Image.alpha_composite(
+        image.convert("RGBA"),
+        shadow
+    )
+
+    draw = ImageDraw.Draw(
+        image
+    )
+
+    # --------------------------------------------------------
+    # LP 본체
+    # --------------------------------------------------------
+
+    margin = 45
+
+    draw.ellipse(
+        (
+            margin,
+            margin,
+            size - margin,
+            size - margin
+        ),
+        fill=(9, 9, 9),
+        outline=(45, 45, 45),
+        width=4
+    )
+
+    # --------------------------------------------------------
+    # LP 그루브
+    # --------------------------------------------------------
+
+    for r in range(
+        int(size * 0.09),
+        int(size * 0.43),
+        9
+    ):
+
+        box = (
+            center - r,
+            center - r,
+            center + r,
+            center + r
+        )
+
+        draw.ellipse(
+            box,
+            outline=(27, 27, 27),
+            width=2
+        )
+
+    # --------------------------------------------------------
+    # 빛 반사
+    # --------------------------------------------------------
+
+    highlight = Image.new(
+        "RGBA",
+        (size, size),
+        (0, 0, 0, 0)
+    )
+
+    hd = ImageDraw.Draw(
+        highlight
+    )
+
+    hd.arc(
+        (
+            margin + 35,
+            margin + 35,
+            size - margin - 35,
+            size - margin - 35
+        ),
+        205,
+        320,
+        fill=(100, 100, 100, 45),
+        width=8
+    )
+
+    image = Image.alpha_composite(
+        image,
+        highlight
+    )
+
+    draw = ImageDraw.Draw(
+        image
+    )
+
+    # --------------------------------------------------------
+    # 앨범 커버
+    # --------------------------------------------------------
+
+    try:
+
+        if cover_url:
+
+            request = urllib.request.Request(
+                cover_url,
+                headers={
+                    "User-Agent": "Mozilla/5.0"
+                }
+            )
+
+            with urllib.request.urlopen(
+                request,
+                timeout=10
+            ) as response:
+
+                cover_bytes = response.read()
+
+            cover = Image.open(
+                io.BytesIO(cover_bytes)
+            ).convert("RGB")
+
+            label_size = 235
+
+            cover.thumbnail(
+                (
+                    label_size,
+                    label_size
+                ),
+                Image.Resampling.LANCZOS
+            )
+
+            # 정사각형 캔버스
+            label = Image.new(
+                "RGB",
+                (
+                    label_size,
+                    label_size
+                ),
+                (80, 50, 30)
+            )
+
+            x = (
+                label_size -
+                cover.width
+            ) // 2
+
+            y = (
+                label_size -
+                cover.height
+            ) // 2
+
+            label.paste(
+                cover,
+                (x, y)
+            )
+
+            # 원형 마스크
+            mask = Image.new(
+                "L",
+                (
+                    label_size,
+                    label_size
+                ),
+                0
+            )
+
+            md = ImageDraw.Draw(
+                mask
+            )
+
+            md.ellipse(
+                (
+                    0,
+                    0,
+                    label_size - 1,
+                    label_size - 1
+                ),
+                fill=255
+            )
+
+            label_rgba = label.convert(
+                "RGBA"
+            )
+
+            label_rgba.putalpha(
+                mask
+            )
+
+            label_x = (
+                center -
+                label_size // 2
+            )
+
+            label_y = (
+                center -
+                label_size // 2
+            )
+
+            image.alpha_composite(
+                label_rgba,
+                (
+                    label_x,
+                    label_y
+                )
+            )
+
+    except Exception:
+
+        # 앨범 커버를 못 가져와도
+        # LP 자체는 반드시 표시
+        draw = ImageDraw.Draw(
+            image
+        )
+
+        draw.ellipse(
+            (
+                center - 120,
+                center - 120,
+                center + 120,
+                center + 120
+            ),
+            fill=(54, 37, 25),
+            outline=(126, 91, 57),
+            width=4
+        )
+
+    # --------------------------------------------------------
+    # 중앙 구멍
+    # --------------------------------------------------------
+
+    draw = ImageDraw.Draw(
+        image
+    )
+
+    draw.ellipse(
+        (
+            center - 12,
+            center - 12,
+            center + 12,
+            center + 12
+        ),
+        fill=(205, 178, 132)
+    )
+
+    draw.ellipse(
+        (
+            center - 4,
+            center - 4,
+            center + 4,
+            center + 4
+        ),
+        fill=(20, 17, 14)
+    )
+
+    return image.convert("RGB")
+
+
+# ============================================================
+# TURNTABLE IMAGE
+# ============================================================
+
+@st.cache_data
+def make_turntable():
+    """
+    LP 플레이어 자체를 Python으로 만든다.
+    """
+
+    width = 1000
+    height = 420
+
+    img = Image.new(
+        "RGB",
+        (width, height),
+        (48, 29, 18)
+    )
+
+    draw = ImageDraw.Draw(
+        img
+    )
+
+    # --------------------------------------------------------
+    # 나무 패널
+    # --------------------------------------------------------
+
+    for y in range(
+        0,
+        height,
+        8
+    ):
+
+        shade = 45 + int(
+            10 * math.sin(y / 35)
+        )
+
+        draw.line(
+            (
+                0,
+                y,
+                width,
+                y
+            ),
+            fill=(
+                shade + 12,
+                shade,
+                max(10, shade - 12)
+            ),
+            width=3
+        )
+
+    # --------------------------------------------------------
+    # 테이블
+    # --------------------------------------------------------
+
+    draw.rounded_rectangle(
+        (
+            70,
+            55,
+            930,
+            365
+        ),
+        radius=25,
+        fill=(35, 23, 16),
+        outline=(139, 99, 63),
+        width=3
+    )
+
+    # --------------------------------------------------------
+    # 왼쪽 컨트롤
+    # --------------------------------------------------------
+
+    draw.rounded_rectangle(
+        (
+            105,
+            105,
+            275,
+            315
+        ),
+        radius=15,
+        fill=(25, 20, 17),
+        outline=(94, 70, 48),
+        width=2
+    )
+
+    draw.ellipse(
+        (
+            155,
+            145,
+            225,
+            215
+        ),
+        fill=(13, 13, 13),
+        outline=(151, 112, 76),
+        width=3
+    )
+
+    draw.rectangle(
+        (
+            140,
+            240,
+            240,
+            260
+        ),
+        fill=(126, 92, 61)
+    )
+
+    # --------------------------------------------------------
+    # LP 받침
+    # --------------------------------------------------------
+
+    draw.ellipse(
+        (
+            330,
+            75,
+            725,
+            360
+        ),
+        fill=(15, 15, 15),
+        outline=(91, 91, 91),
+        width=5
+    )
+
+    # 그루브
+    for r in range(
+        55,
+        145,
+        11
+    ):
+
+        draw.ellipse(
+            (
+                527 - r,
+                217 - r,
+                527 + r,
+                217 + r
+            ),
+            outline=(36, 36, 36),
+            width=2
+        )
+
+    draw.ellipse(
+        (
+            515,
+            205,
+            539,
+            229
+        ),
+        fill=(190, 156, 111)
+    )
+
+    # --------------------------------------------------------
+    # 톤암
+    # --------------------------------------------------------
+
+    draw.ellipse(
+        (
+            790,
+            90,
+            850,
+            150
+        ),
+        fill=(20, 18, 16),
+        outline=(173, 135, 95),
+        width=4
+    )
+
+    draw.line(
+        (
+            820,
+            120,
+            750,
+            185,
+            675,
+            200
+        ),
+        fill=(184, 148, 105),
+        width=13,
+        joint="curve"
+    )
+
+    draw.polygon(
+        (
+            670,
+            194,
+            690,
+            201,
+            682,
+            220,
+            663,
+            211
+        ),
+        fill=(77, 52, 35)
+    )
+
+    return img
+
+
+# ============================================================
+# ITUNES API
 # ============================================================
 
 @st.cache_data(ttl=600)
-def request_itunes(term, country):
-    """
-    Apple iTunes Search API 호출
-    """
+def request_itunes(
+    term,
+    country
+):
 
     params = urllib.parse.urlencode(
         {
@@ -59,50 +602,47 @@ def request_itunes(term, country):
             "entity": "song",
             "limit": 50,
             "lang": "ko_kr",
-            "explicit": "Yes",
         }
     )
 
-    url = "https://itunes.apple.com/search?" + params
+    url = (
+        "https://itunes.apple.com/search?"
+        + params
+    )
 
     request = urllib.request.Request(
         url,
         headers={
             "User-Agent": "Mozilla/5.0"
-        },
+        }
     )
 
     with urllib.request.urlopen(
         request,
-        timeout=15,
+        timeout=15
     ) as response:
 
-        raw = response.read()
+        data = json.loads(
+            response.read().decode(
+                "utf-8"
+            )
+        )
 
-    return json.loads(
-        raw.decode("utf-8")
-    )
+    return data
 
 
 @st.cache_data(ttl=600)
 def search_music(term):
-    """
-    검색 안정성을 위해
-    1. 한국 스토어
-    2. 미국 스토어
-    순서로 검색.
-    """
 
     term = term.strip()
 
     if not term:
-        return [], None
+        return []
 
-    all_results = []
+    results = []
 
-    countries = ["KR", "US"]
-
-    for country in countries:
+    # 한국 + 미국
+    for country in ["KR", "US"]:
 
         try:
 
@@ -111,65 +651,46 @@ def search_music(term):
                 country
             )
 
-            results = data.get(
-                "results",
-                []
-            )
-
-            if results:
-                all_results.extend(
-                    results
+            results.extend(
+                data.get(
+                    "results",
+                    []
                 )
+            )
 
         except Exception:
-            continue
-
-    # --------------------------------------------------------
-    # 중복 제거
-    # --------------------------------------------------------
-
-    unique = {}
-
-    for item in all_results:
-
-        track_id = item.get(
-            "trackId"
-        )
-
-        # trackId가 없는 경우
-        # 제목+아티스트를 키로 사용
-        if track_id is None:
-
-            track_id = (
-                item.get("trackName", ""),
-                item.get("artistName", ""),
-            )
-
-        if track_id not in unique:
-            unique[track_id] = item
-
-    # --------------------------------------------------------
-    # 우리 앱에서 사용할 형식으로 정리
-    # --------------------------------------------------------
+            pass
 
     songs = []
+    seen = set()
 
-    for item in unique.values():
+    for item in results:
 
-        title = item.get("trackName")
-        artist = item.get("artistName")
-        album = item.get("collectionName")
-        cover = item.get("artworkUrl100")
-        preview = item.get("previewUrl")
+        title = item.get(
+            "trackName"
+        )
 
-        # 제목이나 아티스트가 실제로 없는 데이터만 제외
-        if not title:
+        artist = item.get(
+            "artistName"
+        )
+
+        if not title or not artist:
             continue
 
-        if not artist:
+        key = (
+            title.lower(),
+            artist.lower()
+        )
+
+        if key in seen:
             continue
 
-        # 커버가 있으면 큰 이미지로 변경
+        seen.add(key)
+
+        cover = item.get(
+            "artworkUrl100"
+        )
+
         if cover:
 
             cover = cover.replace(
@@ -186,54 +707,37 @@ def search_music(term):
             {
                 "id": item.get(
                     "trackId",
-                    time.time()
+                    len(songs)
                 ),
 
                 "title": title,
 
                 "artist": artist,
 
-                "album": album or "Single",
+                "album": item.get(
+                    "collectionName",
+                    "Single"
+                ),
 
                 "cover": cover,
 
-                "preview": preview,
-
-                "store_url": item.get(
-                    "trackViewUrl",
-                    ""
+                "preview": item.get(
+                    "previewUrl"
                 ),
 
                 "genre": item.get(
                     "primaryGenreName",
                     ""
                 ),
+
+                "store": item.get(
+                    "trackViewUrl",
+                    ""
+                ),
             }
         )
 
-    # --------------------------------------------------------
-    # 같은 곡 중복 제거
-    # --------------------------------------------------------
-
-    final_songs = []
-
-    seen = set()
-
-    for song in songs:
-
-        key = (
-            song["title"].lower(),
-            song["artist"].lower(),
-        )
-
-        if key in seen:
-            continue
-
-        seen.add(key)
-
-        final_songs.append(song)
-
-    return final_songs, None
+    return songs
 
 
 # ============================================================
@@ -244,68 +748,36 @@ def home_page():
 
     st.write("")
     st.write("")
-    st.write("")
 
-    # 상단 작은 문구
+    # 큰 타이틀
+    st.markdown(
+        """
+        # RECORD ROOM
+        """
+    )
+
     st.caption(
-        "E S T . 2 0 2 6   ·   M U S I C & M E M O R Y"
+        "EST. 2026  ·  MUSIC & MEMORY"
     )
 
     st.write("")
-
-    # 메인 타이틀
-    st.title(
-        "🎵 RECORD ROOM"
-    )
 
     st.subheader(
         "오늘의 음악을 한 장의 레코드처럼."
     )
 
     st.write("")
-
-    st.divider()
-
     st.write("")
 
-    # 장식
-    c1, c2, c3, c4, c5 = st.columns(5)
-
-    with c1:
-        st.metric(
-            "ROOM",
-            "01"
-        )
-
-    with c2:
-        st.metric(
-            "MOOD",
-            "VINYL"
-        )
-
-    with c3:
-        st.metric(
-            "MUSIC",
-            "∞"
-        )
-
-    with c4:
-        st.metric(
-            "YEAR",
-            "2026"
-        )
-
-    with c5:
-        st.metric(
-            "STATUS",
-            "OPEN"
-        )
+    # 턴테이블 장식
+    st.image(
+        make_turntable(),
+        use_container_width=True
+    )
 
     st.write("")
     st.write("")
-    st.write("")
 
-    # Enter 버튼
     left, center, right = st.columns(
         [1, 2, 1]
     )
@@ -314,12 +786,11 @@ def home_page():
 
         if st.button(
             "ENTER ROOM  →",
-            key="enter_room",
-            use_container_width=True,
+            use_container_width=True
         ):
+
             go("choice")
 
-    st.write("")
     st.write("")
 
     st.caption(
@@ -333,90 +804,67 @@ def home_page():
 
 def choice_page():
 
-    st.caption(
-        "R E C O R D   R O O M"
-    )
-
-    st.title(
-        "What would you like?"
-    )
-
-    st.write(
+    room_title(
+        "RECORD ROOM",
+        "What would you like?",
         "오늘은 어떤 음악을 만나볼까요?"
     )
-
-    st.divider()
-
-    st.write("")
 
     left, right = st.columns(
         2,
         gap="large"
     )
 
-    # --------------------------------------------------------
-    # 노래듣기
-    # --------------------------------------------------------
-
     with left:
 
-        with st.container(
-            border=True
-        ):
+        with wood_panel():
 
             st.subheader(
-                "💿 노래듣기"
+                "💿  노래듣기"
             )
 
             st.write(
-                "원하는 가수나 곡을 검색하고 "
-                "레코드처럼 음악을 들어보세요."
+                "가수나 곡을 검색해서 "
+                "레코드 플레이어에서 들어보세요."
             )
 
             st.write("")
 
             if st.button(
                 "MUSIC ROOM  →",
-                key="go_music",
-                use_container_width=True,
+                use_container_width=True
             ):
-                go("listen")
 
-    # --------------------------------------------------------
-    # 추천
-    # --------------------------------------------------------
+                go("listen")
 
     with right:
 
-        with st.container(
-            border=True
-        ):
+        with wood_panel():
 
             st.subheader(
-                "🎧 노래 추천받기"
+                "🎧  노래 추천받기"
             )
 
             st.write(
-                "나중에 취향에 맞는 음악을 "
-                "추천받을 수 있도록 확장할 수 있어요."
+                "취향과 분위기를 바탕으로 "
+                "음악을 추천받는 공간이에요."
             )
 
             st.write("")
 
             if st.button(
                 "RECOMMEND  →",
-                key="go_recommend",
-                use_container_width=True,
+                use_container_width=True
             ):
+
                 go("recommend")
 
     st.write("")
-    st.write("")
 
     if st.button(
-        "← HOME",
-        key="choice_home",
+        "← HOME"
     ):
+
         go("home")
 
 
@@ -426,102 +874,76 @@ def choice_page():
 
 def listen_page():
 
-    st.caption(
-        "R E C O R D   R O O M   /   M U S I C"
-    )
-
-    st.title(
-        "MUSIC ROOM"
-    )
-
-    st.write(
+    room_title(
+        "RECORD ROOM / MUSIC",
+        "MUSIC ROOM",
         "가수 이름이나 곡 제목을 검색해보세요."
     )
 
-    st.divider()
-
     if st.button(
-        "← CHOICE",
-        key="listen_back",
+        "← CHOICE"
     ):
+
         go("choice")
 
     st.write("")
 
-    # ========================================================
-    # SEARCH
-    # ========================================================
-
     with st.form(
-        "search_form",
-        clear_on_submit=False
+        "search_form"
     ):
 
-        search_col, button_col = st.columns(
+        col1, col2 = st.columns(
             [5, 1]
         )
 
-        with search_col:
+        with col1:
 
             keyword = st.text_input(
-                "music search",
+                "검색",
                 value=st.session_state.search_word,
-                placeholder="예: 아이유 / Oasis / 실리카겔 / Bruno Mars",
-                label_visibility="collapsed",
+                placeholder=(
+                    "예: 아이유 / Oasis / "
+                    "실리카겔 / Bruno Mars"
+                ),
+                label_visibility="collapsed"
             )
 
-        with button_col:
+        with col2:
 
-            search_pressed = st.form_submit_button(
+            search_button = st.form_submit_button(
                 "SEARCH",
-                use_container_width=True,
+                use_container_width=True
             )
 
-    if search_pressed:
+    if search_button:
 
         keyword = keyword.strip()
 
         st.session_state.search_word = keyword
 
-        if not keyword:
-
-            st.session_state.songs = []
-
-            st.warning(
-                "검색어를 입력해주세요."
-            )
-
-        else:
+        if keyword:
 
             with st.spinner(
-                f"'{keyword}' 레코드를 찾는 중..."
+                "레코드를 찾는 중..."
             ):
 
-                songs, error = search_music(
+                st.session_state.songs = search_music(
                     keyword
                 )
 
-            st.session_state.songs = songs
+        else:
 
-            if not songs:
-
-                st.error(
-                    f"'{keyword}'에 해당하는 음악을 찾지 못했어요."
-                )
-
-                st.caption(
-                    "한국 스토어와 미국 스토어를 모두 검색했습니다."
-                )
-
-    # ========================================================
-    # RESULTS
-    # ========================================================
+            st.session_state.songs = []
 
     songs = st.session_state.songs
 
-    if songs:
+    st.write("")
 
-        st.write("")
+    # ========================================================
+    # 검색 결과
+    # ========================================================
+
+    if songs:
 
         st.subheader(
             f"SEARCH RESULTS  ·  {len(songs)}"
@@ -533,19 +955,13 @@ def listen_page():
 
         st.write("")
 
-        # ----------------------------------------------------
-        # 최대 24개 먼저 표시
-        # ----------------------------------------------------
-
-        visible_songs = songs[:24]
-
         columns = st.columns(
             4,
             gap="medium"
         )
 
         for index, song in enumerate(
-            visible_songs
+            songs[:24]
         ):
 
             with columns[index % 4]:
@@ -554,7 +970,6 @@ def listen_page():
                     border=True
                 ):
 
-                    # 커버
                     if song["cover"]:
 
                         st.image(
@@ -570,72 +985,48 @@ def listen_page():
 
                     st.write("")
 
-                    # 제목
                     st.markdown(
                         f"**{song['title']}**"
                     )
 
-                    # 아티스트
                     st.write(
                         f"🎤 {song['artist']}"
                     )
 
-                    # 앨범
-                    if song["album"]:
+                    st.caption(
+                        song["album"]
+                    )
 
-                        st.caption(
-                            song["album"]
-                        )
-
-                    # 장르
                     if song["genre"]:
 
                         st.caption(
                             song["genre"]
                         )
 
-                    st.write("")
-
                     if st.button(
                         "💿 이 레코드 듣기",
-                        key=f"song_{song['id']}_{index}",
-                        use_container_width=True,
+                        key=(
+                            f"song_"
+                            f"{song['id']}_"
+                            f"{index}"
+                        ),
+                        use_container_width=True
                     ):
 
                         st.session_state.selected_song = song
 
                         go("player")
 
-                    # 미리듣기 가능 여부
-                    if song["preview"]:
+    elif st.session_state.search_word:
 
-                        st.caption(
-                            "30초 미리듣기 가능"
-                        )
+        st.warning(
+            "검색 결과가 없어요."
+        )
 
-                    else:
-
-                        st.caption(
-                            "미리듣기 없음"
-                        )
-
-        # ----------------------------------------------------
-        # 더 많은 결과
-        # ----------------------------------------------------
-
-        if len(songs) > 24:
-
-            st.info(
-                f"검색 결과가 {len(songs)}개 있습니다. "
-                "현재 상위 24개를 표시하고 있어요."
-            )
-
-    elif not st.session_state.search_word:
-
-        st.write("")
+    else:
 
         st.info(
-            "🔎 위 검색창에서 원하는 가수나 곡을 검색해보세요."
+            "🔎 가수 이름이나 곡 제목을 검색해보세요."
         )
 
         st.write("")
@@ -644,50 +1035,38 @@ def listen_page():
             "QUICK SEARCH"
         )
 
-        st.caption(
-            "버튼을 누르면 바로 검색됩니다."
-        )
-
-        st.write("")
-
         quick = [
             "아이유",
             "실리카겔",
             "Oasis",
             "Bruno Mars",
             "NewJeans",
-            "ZICO",
+            "ZICO"
         ]
 
-        quick_cols = st.columns(
+        quick_columns = st.columns(
             3
         )
 
-        for index, artist in enumerate(
+        for i, name in enumerate(
             quick
         ):
 
-            with quick_cols[
-                index % 3
+            with quick_columns[
+                i % 3
             ]:
 
                 if st.button(
-                    artist,
-                    key=f"quick_{artist}",
-                    use_container_width=True,
+                    name,
+                    key=f"quick_{i}",
+                    use_container_width=True
                 ):
 
-                    st.session_state.search_word = artist
+                    st.session_state.search_word = name
 
-                    with st.spinner(
-                        "검색 중..."
-                    ):
-
-                        result, error = search_music(
-                            artist
-                        )
-
-                    st.session_state.songs = result
+                    st.session_state.songs = search_music(
+                        name
+                    )
 
                     st.rerun()
 
@@ -700,119 +1079,118 @@ def player_page():
 
     song = st.session_state.selected_song
 
-    if not song:
+    if song is None:
 
         go("listen")
         return
 
-    st.caption(
-        "R E C O R D   R O O M   /   N O W   P L A Y I N G"
+    room_title(
+        "RECORD ROOM / NOW PLAYING",
+        "NOW PLAYING",
+        "한 장의 레코드처럼 음악을 들어보세요."
     )
-
-    st.title(
-        "NOW PLAYING"
-    )
-
-    st.divider()
 
     if st.button(
-        "← MUSIC ROOM",
-        key="player_back",
+        "← MUSIC ROOM"
     ):
+
         go("listen")
 
     st.write("")
     st.write("")
 
     # ========================================================
-    # PLAYER LAYOUT
+    # 실제 LP
     # ========================================================
 
-    left, middle, right = st.columns(
-        [1, 2, 1]
+    left, center, right = st.columns(
+        [1, 3, 1]
     )
-
-    # --------------------------------------------------------
-    # 왼쪽 정보
-    # --------------------------------------------------------
 
     with left:
 
-        st.subheader(
-            "RECORD"
-        )
+        with wood_panel():
 
-        st.write(
-            "NOW SPINNING"
-        )
+            st.caption(
+                "RECORD"
+            )
 
-        st.metric(
-            "FORMAT",
-            "VINYL"
-        )
+            st.subheader(
+                "NOW SPINNING"
+            )
 
-        if song["genre"]:
+            st.write("")
 
             st.metric(
-                "GENRE",
-                song["genre"]
+                "FORMAT",
+                "VINYL"
             )
 
-    # --------------------------------------------------------
-    # 가운데 LP
-    # --------------------------------------------------------
+            if song["genre"]:
 
-    with middle:
+                st.metric(
+                    "GENRE",
+                    song["genre"]
+                )
 
-        st.markdown(
-            """
-            ## ◎ ◎ ◎
-            """
+    with center:
+
+        # ★ 핵심 ★
+        # 실제로 보이는 LP 이미지
+        record_image = make_record_image(
+            song["cover"]
         )
 
-        if song["cover"]:
-
-            st.image(
-                song["cover"],
-                width=320
-            )
-
-        st.markdown(
-            """
-            ### ◉
-            """
+        st.image(
+            record_image,
+            use_container_width=True
         )
-
-    # --------------------------------------------------------
-    # 오른쪽 정보
-    # --------------------------------------------------------
 
     with right:
 
-        st.subheader(
-            "TRACK INFO"
-        )
+        with wood_panel():
 
-        st.write(
-            f"**{song['title']}**"
-        )
+            st.caption(
+                "TRACK INFO"
+            )
 
-        st.write(
-            f"🎤 {song['artist']}"
-        )
+            st.subheader(
+                song["title"]
+            )
 
-        st.caption(
-            song["album"]
-        )
+            st.write(
+                f"🎤 {song['artist']}"
+            )
 
+            st.write("")
+
+            st.caption(
+                song["album"]
+            )
+
+            if song["genre"]:
+
+                st.caption(
+                    song["genre"]
+                )
+
+    # ========================================================
+    # 플레이어 정보
+    # ========================================================
+
+    st.write("")
     st.divider()
 
-    # ========================================================
-    # AUDIO
-    # ========================================================
-
     st.subheader(
-        "♫ LISTEN"
+        "♫  LISTEN"
+    )
+
+    st.markdown(
+        f"### {song['title']}"
+    )
+
+    st.write(
+        f"**{song['artist']}**"
     )
 
     if song["preview"]:
@@ -823,7 +1201,7 @@ def player_page():
         )
 
         st.caption(
-            "Apple Music Search API에서 제공하는 30초 미리듣기입니다."
+            "Apple에서 제공하는 30초 미리듣기입니다."
         )
 
     else:
@@ -834,16 +1212,12 @@ def player_page():
 
     st.write("")
 
-    # ========================================================
-    # STORE
-    # ========================================================
-
-    if song["store_url"]:
+    if song["store"]:
 
         st.link_button(
             "Apple Music / iTunes에서 보기 →",
-            song["store_url"],
-            use_container_width=True,
+            song["store"],
+            use_container_width=True
         )
 
     st.write("")
@@ -857,7 +1231,7 @@ def player_page():
 
         if st.button(
             "다른 레코드 고르기",
-            use_container_width=True,
+            use_container_width=True
         ):
 
             go("listen")
@@ -866,7 +1240,7 @@ def player_page():
 
         if st.button(
             "처음으로",
-            use_container_width=True,
+            use_container_width=True
         ):
 
             go("home")
@@ -878,41 +1252,22 @@ def player_page():
 
 def recommend_page():
 
-    st.caption(
-        "R E C O R D   R O O M   /   R E C O M M E N D"
+    room_title(
+        "RECORD ROOM / RECOMMEND",
+        "MUSIC RECOMMEND",
+        "당신의 음악 취향을 위한 공간."
     )
-
-    st.title(
-        "MUSIC RECOMMEND"
-    )
-
-    st.write(
-        "추천 기능을 위한 공간입니다."
-    )
-
-    st.divider()
 
     st.info(
-        "현재는 음악 검색과 미리듣기 기능을 먼저 구현한 상태예요."
+        "추천 기능은 음악 검색 기능을 기반으로 "
+        "다음 단계에서 확장할 수 있어요."
     )
 
-    st.write("")
-
-    st.subheader(
-        "COMING SOON"
-    )
-
-    st.write(
-        "좋아하는 가수, 장르, 분위기 등을 선택하면 "
-        "그에 맞는 음악을 보여주는 방식으로 확장할 수 있습니다."
-    )
-
-    st.write("")
     st.write("")
 
     if st.button(
         "← CHOICE",
-        use_container_width=True,
+        use_container_width=True
     ):
 
         go("choice")

@@ -492,11 +492,6 @@ body {
     to { transform: rotate(360deg); }
 }
 
-/*
-    중요:
-    앨범 커버를 정사각형으로 LP 위에 올리지 않는다.
-    중앙에 원형 라벨처럼 표시한다.
-*/
 .label {
     position: absolute;
     width: 128px;
@@ -901,7 +896,8 @@ def show_listen():
         label_visibility="collapsed",
     )
 
-    if query != st.session_state.query:
+    # 수정된 조건문: 입력값이 변경되었거나, 값은 있는데 결과가 비어있는 경우 검색 수행[span_1](start_span)[span_1](end_span)
+    if query != st.session_state.query or (query.strip() and not st.session_state.results):
         st.session_state.query = query
 
         if query.strip():

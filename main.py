@@ -1,6 +1,7 @@
 import html
 import json
 import re
+import textwrap
 from typing import Any, Dict, List
 
 import requests
@@ -9,16 +10,8 @@ import streamlit.components.v1 as components
 
 
 # =========================================================
-# RECORD ROOM
-# One-file Streamlit app
-# - Vintage wood record-bar design
-# - iTunes Search API
-# - Drag an album card onto the vinyl -> preview starts
-# - Click vinyl -> play/pause
-# - Double-click vinyl -> stop
-# - No bottom playback bar / no tonearm
+# PAGE SETTINGS
 # =========================================================
-
 
 st.set_page_config(
     page_title="RECORD ROOM",
@@ -29,13 +22,29 @@ st.set_page_config(
 
 
 # =========================================================
-# THEME CSS
+# IMPORTANT:
+# Streamlit Markdown can treat indented HTML as code.
+# This helper removes indentation before rendering HTML.
 # =========================================================
 
-st.markdown(
+def rr_html(content: str):
+    st.markdown(
+        textwrap.dedent(content),
+        unsafe_allow_html=True,
+    )
+
+
+# =========================================================
+# GLOBAL CSS
+# =========================================================
+
+rr_html(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@500;600;700&display=swap');
+
+    @import url(
+        'https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@500;600;700&display=swap'
+    );
 
     :root{
         --wood-dark:#24150e;
@@ -50,10 +59,21 @@ st.markdown(
         --muted:#b99a74;
     }
 
-    html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"]{
+    html,
+    body,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stApp"]{
         background:
-            radial-gradient(circle at 20% 10%, rgba(186,126,72,.12), transparent 25%),
-            radial-gradient(circle at 80% 80%, rgba(0,0,0,.28), transparent 40%),
+            radial-gradient(
+                circle at 20% 10%,
+                rgba(186,126,72,.12),
+                transparent 25%
+            ),
+            radial-gradient(
+                circle at 80% 80%,
+                rgba(0,0,0,.28),
+                transparent 40%
+            ),
             repeating-linear-gradient(
                 92deg,
                 rgba(255,255,255,.018) 0px,
@@ -67,7 +87,8 @@ st.markdown(
                 #25150e 52%,
                 #1b0f0a 100%
             );
-        color: var(--cream);
+
+        color:var(--cream);
     }
 
     [data-testid="stHeader"]{
@@ -83,89 +104,181 @@ st.markdown(
     }
 
     .block-container{
-        padding:1.3rem 2rem 2.5rem !important;
+        padding:
+            1.3rem
+            2rem
+            2.5rem
+            !important;
+
         max-width:1400px;
     }
 
     div[data-testid="stTextInput"] input{
-        background:rgba(19,10,6,.66) !important;
-        color:#f4e7cf !important;
-        border:1px solid rgba(210,173,117,.50) !important;
-        border-radius:13px !important;
+        background:
+            rgba(19,10,6,.66)
+            !important;
+
+        color:#f4e7cf
+            !important;
+
+        border:
+            1px solid
+            rgba(210,173,117,.50)
+            !important;
+
+        border-radius:
+            13px
+            !important;
+
         box-shadow:
             inset 0 1px 0 rgba(255,255,255,.04),
             0 8px 30px rgba(0,0,0,.18);
-        min-height:48px !important;
-        font-family:'DM Mono', monospace !important;
+
+        min-height:
+            48px
+            !important;
+
+        font-family:
+            'DM Mono',
+            monospace
+            !important;
     }
 
     div[data-testid="stTextInput"] label{
-        color:#c5a67d !important;
+        color:
+            #c5a67d
+            !important;
     }
 
     .stButton > button{
         width:100%;
-        border:1px solid rgba(214,174,116,.45) !important;
+
+        border:
+            1px solid
+            rgba(214,174,116,.45)
+            !important;
+
         background:
             linear-gradient(
                 180deg,
                 rgba(118,72,44,.96),
                 rgba(66,38,24,.96)
-            ) !important;
-        color:#f6e8ce !important;
-        border-radius:12px !important;
-        font-family:'DM Mono', monospace !important;
+            )
+            !important;
+
+        color:
+            #f6e8ce
+            !important;
+
+        border-radius:
+            12px
+            !important;
+
+        font-family:
+            'DM Mono',
+            monospace
+            !important;
+
         letter-spacing:.05em;
-        padding:.72rem 1rem !important;
+
+        padding:
+            .72rem
+            1rem
+            !important;
+
         box-shadow:
             inset 0 1px 0 rgba(255,255,255,.06),
             0 9px 24px rgba(0,0,0,.18);
-        transition:.18s ease;
+
+        transition:
+            .18s ease;
     }
 
     .stButton > button:hover{
-        border-color:rgba(232,200,142,.72) !important;
-        transform:translateY(-1px);
-        filter:brightness(1.08);
+        border-color:
+            rgba(232,200,142,.72)
+            !important;
+
+        transform:
+            translateY(-1px);
+
+        filter:
+            brightness(1.08);
     }
 
     .stButton > button:focus{
         box-shadow:
-            0 0 0 2px rgba(232,200,142,.18) !important;
+            0 0 0 2px
+            rgba(232,200,142,.18)
+            !important;
     }
 
     .rr-topline{
-        border-top:1px solid rgba(215,177,119,.18);
-        margin:6px 0 22px;
+        border-top:
+            1px solid
+            rgba(215,177,119,.18);
+
+        margin:
+            6px 0 22px;
     }
 
     .rr-brand{
         display:flex;
+
         align-items:flex-end;
+
         justify-content:space-between;
+
         gap:20px;
-        padding:2px 4px 10px;
+
+        padding:
+            2px
+            4px
+            10px;
     }
 
     .rr-brand-title{
-        font-family:'Cinzel', serif;
-        font-size:clamp(30px, 4vw, 46px);
-        letter-spacing:.17em;
-        color:#f0dfc2;
-        text-shadow:0 2px 12px rgba(0,0,0,.35);
+        font-family:
+            'Cinzel',
+            serif;
+
+        font-size:
+            clamp(30px,4vw,46px);
+
+        letter-spacing:
+            .17em;
+
+        color:
+            #f0dfc2;
+
+        text-shadow:
+            0 2px 12px
+            rgba(0,0,0,.35);
     }
 
     .rr-brand-sub{
-        font-family:'DM Mono', monospace;
-        color:#aa8b67;
-        font-size:11px;
-        letter-spacing:.09em;
+        font-family:
+            'DM Mono',
+            monospace;
+
+        color:
+            #aa8b67;
+
+        font-size:
+            11px;
+
+        letter-spacing:
+            .09em;
+
         text-align:right;
     }
 
     .rr-rule{
         height:1px;
-        margin:0 0 18px;
+
+        margin:
+            0 0 18px;
+
         background:
             linear-gradient(
                 90deg,
@@ -176,39 +289,87 @@ st.markdown(
     }
 
     .rr-kicker{
-        font-family:'DM Mono', monospace;
-        text-transform:uppercase;
-        color:#bd9c6d;
-        font-size:10px;
-        letter-spacing:.15em;
+        font-family:
+            'DM Mono',
+            monospace;
+
+        text-transform:
+            uppercase;
+
+        color:
+            #bd9c6d;
+
+        font-size:
+            10px;
+
+        letter-spacing:
+            .15em;
     }
 
     .rr-title{
-        font-family:'Playfair Display', serif;
-        font-size:clamp(28px,4vw,48px);
-        line-height:1.02;
-        margin-top:7px;
-        color:#f1dfc1;
+        font-family:
+            'Playfair Display',
+            serif;
+
+        font-size:
+            clamp(28px,4vw,48px);
+
+        line-height:
+            1.02;
+
+        margin-top:
+            7px;
+
+        color:
+            #f1dfc1;
     }
 
     .rr-copy{
-        color:#bfa383;
-        line-height:1.75;
-        font-family:'DM Mono', monospace;
-        font-size:12px;
-        max-width:650px;
+        color:
+            #bfa383;
+
+        line-height:
+            1.75;
+
+        font-family:
+            'DM Mono',
+            monospace;
+
+        font-size:
+            12px;
+
+        max-width:
+            650px;
     }
 
     .rr-home-card{
         position:relative;
-        min-height:56vh;
+
+        min-height:
+            56vh;
+
         display:flex;
-        flex-direction:column;
-        justify-content:center;
-        padding:2rem clamp(1rem,6vw,6rem);
-        border:1px solid rgba(208,169,111,.2);
-        border-radius:26px;
-        overflow:hidden;
+
+        flex-direction:
+            column;
+
+        justify-content:
+            center;
+
+        padding:
+            2rem
+            clamp(1rem,6vw,6rem);
+
+        border:
+            1px solid
+            rgba(208,169,111,.2);
+
+        border-radius:
+            26px;
+
+        overflow:
+            hidden;
+
         background:
             radial-gradient(
                 circle at 72% 28%,
@@ -220,44 +381,73 @@ st.markdown(
                 rgba(106,63,39,.52),
                 rgba(25,13,8,.7)
             );
+
         box-shadow:
-            0 28px 80px rgba(0,0,0,.28),
-            inset 0 1px 0 rgba(255,255,255,.025);
+            0 28px 80px
+            rgba(0,0,0,.28),
+
+            inset 0 1px 0
+            rgba(255,255,255,.025);
     }
 
     .rr-home-card:before{
         content:"";
+
         position:absolute;
+
         inset:18px;
-        border:1px solid rgba(224,190,138,.09);
-        border-radius:20px;
+
+        border:
+            1px solid
+            rgba(224,190,138,.09);
+
+        border-radius:
+            20px;
+
         pointer-events:none;
     }
 
     .rr-home-note{
-        margin-top:16px;
-        color:#987754;
-        font-family:'DM Mono', monospace;
-        font-size:10px;
-        letter-spacing:.12em;
+        margin-top:
+            16px;
+
+        color:
+            #987754;
+
+        font-family:
+            'DM Mono',
+            monospace;
+
+        font-size:
+            10px;
+
+        letter-spacing:
+            .12em;
     }
 
     @media(max-width:760px){
+
         .block-container{
-            padding:.8rem 1rem 2rem !important;
+            padding:
+                .8rem
+                1rem
+                2rem
+                !important;
         }
 
         .rr-brand{
-            align-items:flex-start;
+            align-items:
+                flex-start;
         }
 
         .rr-brand-sub{
-            text-align:left;
+            text-align:
+                left;
         }
     }
+
     </style>
-    """,
-    unsafe_allow_html=True,
+    """
 )
 
 
@@ -285,121 +475,182 @@ def go(page: str):
 
 
 # =========================================================
-# SEARCH HELPERS
+# TEXT HELPERS
 # =========================================================
 
-def normalized(s: str) -> str:
-    s = (s or "").strip().lower()
-    s = re.sub(r"[^0-9a-zA-Z가-힣]+", "", s)
-    return s
+def normalized(value: str) -> str:
+
+    value = (value or "").strip().lower()
+
+    value = re.sub(
+        r"[^0-9a-zA-Z가-힣]+",
+        "",
+        value,
+    )
+
+    return value
 
 
 def artwork_large(url: str) -> str:
+
     if not url:
         return ""
 
     return (
         url
-        .replace("100x100bb", "600x600bb")
-        .replace("100x100-75", "600x600-75")
+        .replace(
+            "100x100bb",
+            "600x600bb"
+        )
+        .replace(
+            "100x100-75",
+            "600x600-75"
+        )
     )
 
 
-def normalize_track(item: Dict[str, Any]) -> Dict[str, str]:
+def normalize_track(
+    item: Dict[str, Any]
+) -> Dict[str, str]:
+
     return {
-        "track": item.get("trackName") or "Untitled",
-        "artist": item.get("artistName") or "Unknown Artist",
-        "album": item.get("collectionName") or "Single",
-        "cover": artwork_large(
-            item.get("artworkUrl100") or ""
-        ),
-        "preview": item.get("previewUrl") or "",
-        "url": item.get("trackViewUrl") or "",
+        "track":
+            item.get("trackName")
+            or "Untitled",
+
+        "artist":
+            item.get("artistName")
+            or "Unknown Artist",
+
+        "album":
+            item.get("collectionName")
+            or "Single",
+
+        "cover":
+            artwork_large(
+                item.get(
+                    "artworkUrl100"
+                )
+                or ""
+            ),
+
+        "preview":
+            item.get("previewUrl")
+            or "",
+
+        "url":
+            item.get("trackViewUrl")
+            or "",
     }
 
 
 # =========================================================
-# ITUNES API
+# API
 # =========================================================
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(
+    ttl=600,
+    show_spinner=False
+)
 def api_get(
     url: str,
     params: Dict[str, Any]
 ) -> Dict[str, Any]:
 
-    response = requests.get(
-        url,
-        params=params,
-        timeout=8,
-        headers={
-            "User-Agent": "RECORD ROOM/1.0"
-        },
-    )
+    try:
 
-    response.raise_for_status()
+        response = requests.get(
+            url,
+            params=params,
+            timeout=10,
+            headers={
+                "User-Agent":
+                    "RECORD ROOM/1.0"
+            },
+        )
 
-    return response.json()
+        response.raise_for_status()
+
+        return response.json()
+
+    except Exception:
+
+        return {}
 
 
 # =========================================================
 # ARTIST SEARCH
 # =========================================================
 
+@st.cache_data(
+    ttl=600,
+    show_spinner=False
+)
 def artist_search(
     term: str
 ) -> List[Dict[str, str]]:
 
-    out: List[Dict[str, str]] = []
+    results = []
 
-    # 한국 + 미국 스토어 둘 다 검색
-    for country in ("kr", "us"):
+    for country in (
+        "kr",
+        "us",
+    ):
 
-        try:
+        data = api_get(
+            "https://itunes.apple.com/search",
+            {
+                "term":term,
+                "country":country,
+                "media":"music",
+                "entity":"musicArtist",
+                "limit":10,
+            },
+        )
 
-            data = api_get(
-                "https://itunes.apple.com/search",
-                {
-                    "term": term,
-                    "country": country,
-                    "media": "music",
-                    "entity": "musicArtist",
-                    "limit": 8,
-                },
+        for item in data.get(
+            "results",
+            []
+        ):
+
+            artist_id = (
+                item.get("artistId")
             )
 
-            for item in data.get("results", []):
+            artist_name = (
+                item.get("artistName")
+                or ""
+            )
 
-                name = item.get("artistName") or ""
+            if artist_id and artist_name:
 
-                if name:
+                results.append(
+                    {
+                        "id":
+                            str(artist_id),
 
-                    out.append(
-                        {
-                            "id": str(
-                                item.get("artistId") or ""
-                            ),
-                            "artist": name,
-                        }
-                    )
-
-        except Exception:
-            pass
+                        "artist":
+                            artist_name,
+                    }
+                )
 
     # 중복 제거
     seen = set()
     unique = []
 
-    for item in out:
+    for item in results:
 
         key = (
             item["id"],
-            normalized(item["artist"])
+            normalized(
+                item["artist"]
+            ),
         )
 
         if key not in seen:
 
             seen.add(key)
+
             unique.append(item)
 
     return unique
@@ -409,105 +660,128 @@ def artist_search(
 # ARTIST TRACK LOOKUP
 # =========================================================
 
+@st.cache_data(
+    ttl=600,
+    show_spinner=False
+)
 def artist_tracks(
     artist_id: str
 ) -> List[Dict[str, str]]:
 
-    out: List[Dict[str, str]] = []
-
     if not artist_id:
-        return out
+        return []
 
-    # 한국 + 미국 스토어 둘 다 확인
-    for country in ("kr", "us"):
+    results = []
 
-        try:
+    for country in (
+        "kr",
+        "us",
+    ):
 
-            data = api_get(
-                "https://itunes.apple.com/lookup",
-                {
-                    "id": artist_id,
-                    "entity": "song",
-                    "country": country,
-                    "limit": 30,
-                    "sort": "recent",
-                },
-            )
+        data = api_get(
+            "https://itunes.apple.com/lookup",
+            {
+                "id":artist_id,
+                "entity":"song",
+                "country":country,
+                "limit":100,
+            },
+        )
 
-            for item in data.get("results", []):
+        for item in data.get(
+            "results",
+            []
+        ):
 
-                if item.get("kind") == "song":
+            if (
+                item.get("wrapperType")
+                == "track"
+                and
+                item.get("kind")
+                == "song"
+            ):
 
-                    out.append(
-                        normalize_track(item)
+                results.append(
+                    normalize_track(
+                        item
                     )
+                )
 
-        except Exception:
-            pass
-
-    return out
+    return results
 
 
 # =========================================================
 # SONG SEARCH
 # =========================================================
 
+@st.cache_data(
+    ttl=600,
+    show_spinner=False
+)
 def song_search(
     term: str,
     attribute: str = ""
 ) -> List[Dict[str, str]]:
 
-    out: List[Dict[str, str]] = []
+    results = []
 
-    # 한국 + 미국
-    for country in ("kr", "us"):
+    for country in (
+        "kr",
+        "us",
+    ):
 
-        try:
+        params = {
+            "term":
+                term,
 
-            params = {
-                "term": term,
-                "country": country,
-                "media": "music",
-                "entity": "song",
-                "limit": 100,
-            }
+            "country":
+                country,
 
-            # ★ 핵심 수정
-            #
-            # attribute="artistTerm"이면
-            # 검색어를 노래 제목에서만 찾는 것이 아니라
-            # 실제 아티스트 이름 기준으로 검색한다.
-            #
-            # 예:
-            # 지코
-            # 아이유
-            # 뉴진스
-            #
-            # 등을 검색했을 때 해당 가수의 곡을 가져온다.
-            if attribute:
-                params["attribute"] = attribute
+            "media":
+                "music",
 
-            data = api_get(
-                "https://itunes.apple.com/search",
-                params,
-            )
+            "entity":
+                "song",
 
-            for item in data.get("results", []):
+            "limit":
+                100,
+        }
 
-                if item.get("kind") == "song":
+        # ★ 가장 중요한 부분
+        # artistTerm을 지정하면
+        # "가수 이름"을 중심으로 검색한다.
+        if attribute:
+            params["attribute"] = attribute
 
-                    out.append(
-                        normalize_track(item)
+        data = api_get(
+            "https://itunes.apple.com/search",
+            params,
+        )
+
+        for item in data.get(
+            "results",
+            []
+        ):
+
+            if (
+                item.get("wrapperType")
+                == "track"
+                and
+                item.get("kind")
+                == "song"
+            ):
+
+                results.append(
+                    normalize_track(
+                        item
                     )
+                )
 
-        except Exception:
-            pass
-
-    return out
+    return results
 
 
 # =========================================================
-# SEARCH RESULT SCORING
+# RESULT SCORE
 # =========================================================
 
 def score_result(
@@ -518,53 +792,39 @@ def score_result(
     query = normalized(term)
 
     artist = normalized(
-        item["artist"]
+        item.get("artist", "")
     )
 
     track = normalized(
-        item["track"]
+        item.get("track", "")
     )
 
     album = normalized(
-        item["album"]
+        item.get("album", "")
     )
 
     score = 0
 
-    # 가수 이름 정확히 일치
     if artist == query:
         score += 1000
 
-    # 곡 제목 정확히 일치
     if track == query:
-        score += 920
+        score += 900
 
-    # 가수 이름에 검색어 포함
     if query and query in artist:
-        score += 430
+        score += 500
 
-    # 곡 제목에 검색어 포함
     if query and query in track:
-        score += 410
+        score += 400
 
-    # 앨범명에 검색어 포함
     if query and query in album:
-        score += 120
-
-    # 아무 관련 없는 결과는 낮춤
-    if (
-        query
-        and query not in artist
-        and query not in track
-        and query not in album
-    ):
-        score -= 250
+        score += 100
 
     return score
 
 
 # =========================================================
-# MAIN MUSIC SEARCH
+# MAIN SEARCH
 # =========================================================
 
 def search_music(
@@ -576,123 +836,142 @@ def search_music(
     if not term:
         return []
 
-    candidates: List[
-        Dict[str, str]
-    ] = []
+    query = normalized(term)
 
-    query_normalized = normalized(term)
+    candidates = []
 
-    # -----------------------------------------------------
-    # 1. ★ 가수 이름 전용 검색
-    # -----------------------------------------------------
-    #
-    # 기존 검색은 단순히
-    #
-    #     term = "지코"
-    #
-    # 로 검색했기 때문에 API 결과가 상황에 따라
-    # 노래 제목 위주로 잡힐 수 있었다.
-    #
-    # 이제 artistTerm을 명시해서
-    # "지코라는 가수가 부른 노래"를 먼저 찾는다.
-    #
+    # =====================================================
+    # 1. 가수 이름으로 직접 검색
+    # =====================================================
 
-    artist_song_candidates = song_search(
+    artist_song_results = song_search(
         term,
-        attribute="artistTerm"
+        attribute="artistTerm",
     )
 
-    exact_artist_songs = [
+    # 정확히 해당 가수인 결과
+    exact_artist = [
         item
-        for item in artist_song_candidates
-        if normalized(item["artist"])
-        == query_normalized
+        for item in artist_song_results
+        if normalized(
+            item.get("artist", "")
+        ) == query
     ]
 
-    if exact_artist_songs:
+    if exact_artist:
 
         candidates.extend(
-            exact_artist_songs
+            exact_artist
         )
 
     else:
 
-        # 정확히 일치하지 않더라도
-        # 검색어가 가수 이름에 포함된 결과를 사용
+        # 부분 일치 가수
+        partial_artist = [
+            item
+            for item in artist_song_results
+            if query in normalized(
+                item.get("artist", "")
+            )
+        ]
+
         candidates.extend(
-            artist_song_candidates
+            partial_artist
         )
 
-    # -----------------------------------------------------
-    # 2. 기존 아티스트 검색 방식도 보조로 사용
-    # -----------------------------------------------------
+    # =====================================================
+    # 2. 아티스트 검색 API도 사용
+    # =====================================================
 
-    artist_candidates = artist_search(term)
+    artists = artist_search(term)
 
-    for artist in artist_candidates[:4]:
+    matching_artists = []
 
-        name_normalized = normalized(
-            artist["artist"]
+    for artist in artists:
+
+        artist_name = normalized(
+            artist.get("artist", "")
         )
 
         if (
-            query_normalized == name_normalized
-            or query_normalized in name_normalized
-            or name_normalized in query_normalized
+            artist_name == query
+            or query in artist_name
+            or artist_name in query
         ):
 
-            candidates.extend(
-                artist_tracks(
-                    artist["id"]
-                )
+            matching_artists.append(
+                artist
             )
 
-    # -----------------------------------------------------
-    # 3. 일반 노래 검색
-    # -----------------------------------------------------
+    for artist in matching_artists[:3]:
 
-    candidates.extend(
-        song_search(term)
-    )
-
-    # -----------------------------------------------------
-    # 4. 혹시 결과가 없으면 아티스트 첫 결과를
-    #    한 번 더 조회
-    # -----------------------------------------------------
-
-    if (
-        not candidates
-        and artist_candidates
-    ):
-
-        candidates.extend(
-            artist_tracks(
-                artist_candidates[0]["id"]
-            )
+        tracks = artist_tracks(
+            artist["id"]
         )
 
-    # -----------------------------------------------------
-    # 5. 중복 제거
-    # -----------------------------------------------------
+        candidates.extend(
+            tracks
+        )
 
-    unique: Dict[
-        str,
-        Dict[str, str]
-    ] = {}
+    # =====================================================
+    # 3. 일반 곡 검색
+    # =====================================================
+
+    normal_results = song_search(
+        term
+    )
+
+    exact_artist_from_normal = [
+        item
+        for item in normal_results
+        if normalized(
+            item.get("artist", "")
+        ) == query
+    ]
+
+    if exact_artist_from_normal:
+
+        candidates.extend(
+            exact_artist_from_normal
+        )
+
+    else:
+
+        candidates.extend(
+            normal_results
+        )
+
+    # =====================================================
+    # 4. 중복 제거
+    # =====================================================
+
+    unique = {}
 
     for item in candidates:
 
+        if not item.get(
+            "preview"
+        ):
+            continue
+
         key = (
-            normalized(item["artist"])
+            normalized(
+                item.get(
+                    "artist",
+                    ""
+                )
+            )
             + "|"
-            + normalized(item["track"])
+            +
+            normalized(
+                item.get(
+                    "track",
+                    ""
+                )
+            )
         )
 
-        # 미리듣기 주소가 있는 곡만 사용
-        if (
-            item["preview"]
-            and key not in unique
-        ):
+        if key not in unique:
 
             unique[key] = item
 
@@ -700,24 +979,31 @@ def search_music(
         unique.values()
     )
 
-    # -----------------------------------------------------
-    # 6. 관련성이 높은 결과부터 정렬
-    # -----------------------------------------------------
+    # =====================================================
+    # 5. 관련성 순서
+    # =====================================================
 
     results.sort(
         key=lambda item:
-            score_result(term, item),
-        reverse=True
+            score_result(
+                term,
+                item
+            ),
+        reverse=True,
     )
 
     return results[:24]
 
 
+# =========================================================
+# RECOMMENDATION SEARCH
+# =========================================================
+
 @st.cache_data(
     ttl=900,
     show_spinner=False
 )
-def seed_search(
+def recommendation_search(
     term: str
 ) -> List[Dict[str, str]]:
 
@@ -732,10 +1018,12 @@ def render_header(
     section: str
 ):
 
-    st.markdown(
+    rr_html(
         f"""
         <div class="rr-brand">
+
             <div>
+
                 <div class="rr-brand-title">
                     RECORD ROOM
                 </div>
@@ -743,44 +1031,42 @@ def render_header(
                 <div class="rr-kicker">
                     {html.escape(section)}
                 </div>
+
             </div>
 
             <div class="rr-brand-sub">
                 VINYL · LISTEN · DISCOVER
             </div>
+
         </div>
 
         <div class="rr-rule"></div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
 # =========================================================
-# MUSIC PLAYER COMPONENT
+# RECORD PLAYER
 # =========================================================
 
-def track_cards_component(
-    tracks: List[Dict[str, str]],
-    key_suffix: str = "main"
+def render_music_room(
+    tracks: List[Dict[str, str]]
 ):
 
-    # JSON 안전 처리
-    data = (
-        json.dumps(
-            tracks,
-            ensure_ascii=False
-        )
-        .replace(
-            "</",
-            "<\\/"
-        )
+    data = json.dumps(
+        tracks,
+        ensure_ascii=False
+    )
+
+    data = data.replace(
+        "</",
+        "<\\/"
     )
 
     component_html = f"""
-<!doctype html>
+<!DOCTYPE html>
 
-<html lang="ko">
+<html>
 
 <head>
 
@@ -788,116 +1074,83 @@ def track_cards_component(
 
 <meta
     name="viewport"
-    content="width=device-width, initial-scale=1"
+    content="width=device-width,initial-scale=1"
 >
 
 <style>
 
-*{{
+* {{
     box-sizing:border-box;
 }}
 
-body{{
+html,
+body {{
     margin:0;
     padding:0;
-    color:#f2dfbf;
+    width:100%;
+    min-height:100%;
+
     background:transparent;
-    font-family:Arial, Helvetica, sans-serif;
+
+    color:#f1dfc1;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
 }}
 
-
-/* =====================================================
-   ROOM
-   ===================================================== */
-
-.room{{
-    border:1px solid rgba(224,188,137,.18);
-
-    border-radius:22px;
-
-    background:
-        linear-gradient(
-            180deg,
-            rgba(77,45,28,.72),
-            rgba(33,18,11,.84)
-        ),
-        repeating-linear-gradient(
-            90deg,
-            rgba(255,255,255,.02) 0 2px,
-            transparent 2px 14px
-        );
-
-    box-shadow:
-        0 22px 70px rgba(0,0,0,.27),
-        inset 0 1px 0 rgba(255,255,255,.03);
-
-    padding:22px;
-
-    overflow:hidden;
+.room {{
+    padding:0;
+    margin:0;
 }}
 
+.room-title {{
+    color:#b89568;
 
-/* =====================================================
-   LABEL
-   ===================================================== */
+    font:
+        10px
+        monospace;
 
-.label{{
-    font-size:10px;
+    letter-spacing:
+        .16em;
 
-    letter-spacing:.17em;
-
-    color:#b99567;
-
-    text-transform:uppercase;
-
-    font-family:monospace;
+    text-transform:
+        uppercase;
 
     margin-bottom:8px;
 }}
 
-
-.hint{{
-    font-size:11px;
-
-    line-height:1.7;
-
+.room-hint {{
     color:#9c7d59;
 
-    font-family:monospace;
+    font:
+        11px/1.7
+        monospace;
 
     margin-bottom:18px;
 }}
 
-
-/* =====================================================
-   STUDIO
-   ===================================================== */
-
-.studio{{
+.studio {{
     display:grid;
 
     grid-template-columns:
-        minmax(0, 1.18fr)
+        minmax(0,1.18fr)
         minmax(310px,.82fr);
 
     gap:18px;
-
-    align-items:stretch;
 }}
 
-
-/* =====================================================
-   DECK
-   ===================================================== */
-
-.deck{{
+.deck {{
     min-height:530px;
 
     position:relative;
 
-    border-radius:18px;
+    border:
+        1px solid
+        rgba(222,190,143,.16);
 
-    border:1px solid rgba(222,190,143,.16);
+    border-radius:18px;
 
     background:
         radial-gradient(
@@ -913,14 +1166,16 @@ body{{
         );
 
     box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.03),
-        inset 0 -20px 50px rgba(0,0,0,.18);
+        inset 0 1px 0
+        rgba(255,255,255,.03),
+
+        inset 0 -20px 50px
+        rgba(0,0,0,.18);
 
     overflow:hidden;
 }}
 
-
-.deck::before{{
+.deck::before {{
     content:"";
 
     position:absolute;
@@ -936,8 +1191,7 @@ body{{
     pointer-events:none;
 }}
 
-
-.deck-top{{
+.deck-top {{
     position:absolute;
 
     top:16px;
@@ -950,31 +1204,30 @@ body{{
 
     align-items:center;
 
-    font-family:monospace;
+    font:
+        9px
+        monospace;
 
-    font-size:9px;
-
-    letter-spacing:.16em;
+    letter-spacing:
+        .16em;
 
     color:#b89568;
 
-    text-transform:uppercase;
+    text-transform:
+        uppercase;
 }}
 
-
-.deck-mark{{
+.deck-mark {{
     color:#d5b27b;
 }}
 
-
-/* =====================================================
-   VINYL AREA
-   ===================================================== */
-
-.vinyl-wrap{{
+.vinyl-wrap {{
     position:absolute;
 
-    inset:72px 0 68px;
+    inset:
+        72px
+        0
+        68px;
 
     display:flex;
 
@@ -983,12 +1236,7 @@ body{{
     justify-content:center;
 }}
 
-
-/* =====================================================
-   VINYL
-   ===================================================== */
-
-.vinyl{{
+.vinyl {{
     width:min(62vw,390px);
 
     height:min(62vw,390px);
@@ -1013,48 +1261,48 @@ body{{
             rgba(255,255,255,.12),
             transparent 12%
         ),
+
         repeating-radial-gradient(
             circle at center,
             #161616 0 2px,
             #202020 2px 4px,
             #121212 4px 6px
         ),
+
         #151515;
 
     box-shadow:
-        0 22px 55px rgba(0,0,0,.42),
-        inset -12px -12px 25px rgba(0,0,0,.45),
-        inset 10px 10px 18px rgba(255,255,255,.025);
+        0 22px 55px
+        rgba(0,0,0,.42),
+
+        inset -12px -12px 25px
+        rgba(0,0,0,.45),
+
+        inset 10px 10px 18px
+        rgba(255,255,255,.025);
 
     transition:
-        transform .22s ease,
-        box-shadow .22s ease;
+        transform .22s ease;
 }}
 
-
-.vinyl:hover{{
-    transform:scale(1.012);
+.vinyl:hover {{
+    transform:
+        scale(1.012);
 }}
 
-
-.vinyl.spinning{{
+.vinyl.spinning {{
     animation:
         spin 1.8s linear infinite;
 }}
 
-
-@keyframes spin{{
-    to{{
-        transform:rotate(360deg);
+@keyframes spin {{
+    to {{
+        transform:
+            rotate(360deg);
     }}
 }}
 
-
-/* =====================================================
-   CENTER LABEL
-   ===================================================== */
-
-.label-disc{{
+.label-disc {{
     position:absolute;
 
     width:31%;
@@ -1067,17 +1315,27 @@ body{{
 
     overflow:hidden;
 
-    border:7px solid #1b1b1b;
+    border:
+        7px solid
+        #1b1b1b;
 
     box-shadow:
-        0 0 0 1px rgba(255,255,255,.07),
-        0 3px 12px rgba(0,0,0,.35);
+        0 0 0 1px
+        rgba(255,255,255,.07),
 
-    background:#7f5d42;
+        0 3px 12px
+        rgba(0,0,0,.35);
+
+    background:
+        radial-gradient(
+            circle,
+            #b78d55 0 12%,
+            #5a3821 13% 42%,
+            #2c1a10 43% 100%
+        );
 }}
 
-
-.label-disc img{{
+.label-disc img {{
     width:100%;
     height:100%;
 
@@ -1086,12 +1344,7 @@ body{{
     display:block;
 }}
 
-
-/* =====================================================
-   SPINDLE
-   ===================================================== */
-
-.spindle{{
+.spindle {{
     position:absolute;
 
     left:48%;
@@ -1109,15 +1362,11 @@ body{{
 
     box-shadow:
         0 0 0 2px #343434,
-        0 1px 5px rgba(0,0,0,.45);
+        0 1px 5px
+        rgba(0,0,0,.45);
 }}
 
-
-/* =====================================================
-   DROP RING
-   ===================================================== */
-
-.drop-ring{{
+.drop-ring {{
     position:absolute;
 
     left:11%;
@@ -1135,12 +1384,7 @@ body{{
     pointer-events:none;
 }}
 
-
-/* =====================================================
-   DECK BOTTOM
-   ===================================================== */
-
-.deck-bottom{{
+.deck-bottom {{
     position:absolute;
 
     left:18px;
@@ -1155,20 +1399,19 @@ body{{
 
     gap:14px;
 
-    font-family:monospace;
+    font:
+        10px
+        monospace;
 }}
 
-
-.status{{
-    font-size:10px;
-
+.status {{
     color:#b99668;
 
-    letter-spacing:.08em;
+    letter-spacing:
+        .08em;
 }}
 
-
-.track-now{{
+.track-now {{
     font-size:11px;
 
     color:#ead8bb;
@@ -1182,12 +1425,7 @@ body{{
     max-width:70%;
 }}
 
-
-/* =====================================================
-   CARDS
-   ===================================================== */
-
-.cards{{
+.cards {{
     display:grid;
 
     grid-template-columns:
@@ -1207,24 +1445,17 @@ body{{
     scrollbar-width:thin;
 }}
 
-
-.cards::-webkit-scrollbar{{
+.cards::-webkit-scrollbar {{
     width:6px;
 }}
 
-
-.cards::-webkit-scrollbar-thumb{{
+.cards::-webkit-scrollbar-thumb {{
     background:#785033;
 
     border-radius:20px;
 }}
 
-
-/* =====================================================
-   CARD
-   ===================================================== */
-
-.card{{
+.card {{
     background:
         linear-gradient(
             180deg,
@@ -1244,32 +1475,27 @@ body{{
 
     min-width:0;
 
-    transition:.18s ease;
+    transition:
+        .18s ease;
 
     box-shadow:
         0 10px 24px
         rgba(0,0,0,.18);
 }}
 
-
-.card:hover{{
-    transform:translateY(-2px);
+.card:hover {{
+    transform:
+        translateY(-2px);
 
     border-color:
         rgba(229,196,144,.3);
 }}
 
-
-.card:active{{
+.card:active {{
     cursor:grabbing;
 }}
 
-
-/* =====================================================
-   COVER
-   ===================================================== */
-
-.cover{{
+.cover {{
     width:100%;
 
     aspect-ratio:1/1;
@@ -1287,17 +1513,14 @@ body{{
         rgba(0,0,0,.28);
 }}
 
-
-/* =====================================================
-   META
-   ===================================================== */
-
-.meta{{
-    padding:8px 2px 2px;
+.meta {{
+    padding:
+        8px
+        2px
+        2px;
 }}
 
-
-.song{{
+.song {{
     font-size:11px;
 
     font-weight:700;
@@ -1313,8 +1536,7 @@ body{{
     text-overflow:ellipsis;
 }}
 
-
-.artist{{
+.artist {{
     font-size:9px;
 
     line-height:1.5;
@@ -1328,8 +1550,7 @@ body{{
     text-overflow:ellipsis;
 }}
 
-
-.small-tag{{
+.small-tag {{
     font-size:8px;
 
     color:#816448;
@@ -1341,12 +1562,7 @@ body{{
     letter-spacing:.08em;
 }}
 
-
-/* =====================================================
-   EMPTY
-   ===================================================== */
-
-.empty{{
+.empty {{
     min-height:260px;
 
     display:flex;
@@ -1372,12 +1588,7 @@ body{{
     padding:25px;
 }}
 
-
-/* =====================================================
-   MESSAGE
-   ===================================================== */
-
-.message{{
+.message {{
     position:absolute;
 
     left:50%;
@@ -1402,7 +1613,9 @@ body{{
         1px solid
         rgba(222,189,140,.16);
 
-    padding:7px 11px;
+    padding:
+        7px
+        11px;
 
     border-radius:999px;
 
@@ -1413,43 +1626,37 @@ body{{
     transition:.18s ease;
 }}
 
-
-.message.show{{
+.message.show {{
     opacity:1;
 }}
 
+@media(max-width:920px) {{
 
-/* =====================================================
-   RESPONSIVE
-   ===================================================== */
-
-@media(max-width:920px){{
-
-    .studio{{
-        grid-template-columns:1fr;
+    .studio {{
+        grid-template-columns:
+            1fr;
     }}
 
-    .deck{{
+    .deck {{
         min-height:480px;
     }}
 
-    .cards{{
+    .cards {{
         max-height:none;
     }}
 
-    .track-now{{
+    .track-now {{
         max-width:62%;
     }}
 }}
 
+@media(max-width:600px) {{
 
-@media(max-width:600px){{
-
-    .room{{
-        padding:14px;
+    .room {{
+        padding:0;
     }}
 
-    .cards{{
+    .cards {{
         grid-template-columns:
             repeat(
                 2,
@@ -1459,15 +1666,18 @@ body{{
         gap:8px;
     }}
 
-    .deck{{
+    .deck {{
         min-height:400px;
     }}
 
-    .vinyl-wrap{{
-        inset:60px 0 58px;
+    .vinyl-wrap {{
+        inset:
+            60px
+            0
+            58px;
     }}
 
-    .vinyl{{
+    .vinyl {{
         min-width:205px;
         min-height:205px;
     }}
@@ -1477,28 +1687,21 @@ body{{
 
 </head>
 
-
 <body>
 
 <div class="room">
 
-    <div class="label">
+    <div class="room-title">
         RECORD PLAYER / LIVE PREVIEW
     </div>
 
-    <div class="hint">
+    <div class="room-hint">
         앨범 카드를 잡아서 왼쪽 LP 위에 놓으세요.
         · LP 한 번 클릭 = 재생/일시정지
         · 두 번 클릭 = 정지
     </div>
 
-
     <div class="studio">
-
-
-        <!-- =========================================
-             RECORD PLAYER
-             ========================================= -->
 
         <section
             class="deck"
@@ -1516,7 +1719,6 @@ body{{
                 </span>
 
             </div>
-
 
             <div class="vinyl-wrap">
 
@@ -1539,14 +1741,12 @@ body{{
 
             </div>
 
-
             <div
                 class="message"
                 id="message"
             >
                 이 곡은 미리듣기가 없습니다.
             </div>
-
 
             <div class="deck-bottom">
 
@@ -1568,11 +1768,6 @@ body{{
 
         </section>
 
-
-        <!-- =========================================
-             RECORD CARDS
-             ========================================= -->
-
         <section>
 
             <div
@@ -1582,7 +1777,6 @@ body{{
 
         </section>
 
-
     </div>
 
 </div>
@@ -1590,43 +1784,43 @@ body{{
 
 <script>
 
-
-// =====================================================
-// DATA
-// =====================================================
-
 const TRACKS = {data};
 
-
-// =====================================================
-// ELEMENTS
-// =====================================================
-
 const cardsEl =
-    document.getElementById("cards");
+    document.getElementById(
+        "cards"
+    );
 
 const vinyl =
-    document.getElementById("vinyl");
+    document.getElementById(
+        "vinyl"
+    );
 
 const deck =
-    document.getElementById("deck");
+    document.getElementById(
+        "deck"
+    );
 
 const labelDisc =
-    document.getElementById("labelDisc");
+    document.getElementById(
+        "labelDisc"
+    );
 
 const statusEl =
-    document.getElementById("status");
+    document.getElementById(
+        "status"
+    );
 
 const trackNow =
-    document.getElementById("trackNow");
+    document.getElementById(
+        "trackNow"
+    );
 
 const message =
-    document.getElementById("message");
+    document.getElementById(
+        "message"
+    );
 
-
-// =====================================================
-// PLAYER STATE
-// =====================================================
 
 let currentIndex = -1;
 
@@ -1637,88 +1831,84 @@ audio.preload = "auto";
 let clickTimer = null;
 
 
-// =====================================================
-// HTML ESCAPE
-// =====================================================
+function esc(value) {{
 
-function esc(s){{
     return String(
-        s ?? ""
+        value ?? ""
     ).replace(
-        /[&<>'\"]/g,
-        c =>
-            ({{
+        /[&<>'"]/g,
+        function(c) {{
+
+            return {{
                 "&":"&amp;",
                 "<":"&lt;",
                 ">":"&gt;",
                 "'":"&#39;",
-                "\"":"&quot;"
-            }})[c]
+                '"':"&quot;"
+            }}[c];
+
+        }}
     );
 }}
 
 
-// =====================================================
-// MESSAGE
-// =====================================================
+function showMessage(text) {{
 
-function showMessage(text){{
+    message.textContent =
+        text;
 
-    message.textContent = text;
-
-    message.classList.add("show");
-
-    clearTimeout(
-        showMessage.t
+    message.classList.add(
+        "show"
     );
 
-    showMessage.t =
+    clearTimeout(
+        showMessage.timer
+    );
+
+    showMessage.timer =
         setTimeout(
-            () =>
-                message.classList.remove("show"),
+            function() {{
+                message.classList.remove(
+                    "show"
+                );
+            }},
             1800
         );
 }}
 
 
-// =====================================================
-// LABEL
-// =====================================================
-
-function setLabel(track){{
+function setLabel(track) {{
 
     labelDisc.innerHTML = "";
 
-    if(
+    if (
         track &&
         track.cover
-    ){{
+    ) {{
 
         const img =
-            document.createElement("img");
+            document.createElement(
+                "img"
+            );
 
         img.src =
             track.cover;
 
         img.alt = "";
 
-        labelDisc.appendChild(img);
+        labelDisc.appendChild(
+            img
+        );
 
-    }} else {{
-
-        labelDisc.style.background =
-            "radial-gradient(circle,#b78d55 0 12%,#5a3821 13% 42%,#2c1a10 43% 100%)";
     }}
 }}
 
 
-// =====================================================
-// PLAYER STATE UI
-// =====================================================
+function updateState() {{
 
-function updateState(){{
-
-    if(currentIndex < 0){{
+    if (
+        currentIndex < 0
+    ) {{
 
         statusEl.textContent =
             "READY";
@@ -1743,20 +1933,16 @@ function updateState(){{
 }}
 
 
-// =====================================================
-// LOAD + PLAY
-// =====================================================
-
-function loadAndPlay(index){{
+function loadAndPlay(index) {{
 
     const track =
         TRACKS[index];
 
-    if(!track)
+    if (!track) {
         return;
+    }}
 
-
-    if(!track.preview){{
+    if (!track.preview) {{
 
         currentIndex =
             index;
@@ -1775,12 +1961,12 @@ function loadAndPlay(index){{
         return;
     }}
 
-
     currentIndex =
         index;
 
     setLabel(track);
 
+    audio.pause();
 
     audio.src =
         track.preview;
@@ -1788,23 +1974,22 @@ function loadAndPlay(index){{
     audio.currentTime =
         0;
 
-
-    const promise =
+    const playPromise =
         audio.play();
 
+    if (
+        playPromise &&
+        playPromise.catch
+    ) {{
 
-    if(
-        promise &&
-        promise.catch
-    ){{
-        promise.catch(
-            () =>
+        playPromise.catch(
+            function() {{
                 showMessage(
                     "브라우저에서 재생을 허용해 주세요."
-                )
+                );
+            }}
         );
     }}
-
 
     vinyl.classList.add(
         "spinning"
@@ -1817,13 +2002,11 @@ function loadAndPlay(index){{
 }}
 
 
-// =====================================================
-// PLAY / PAUSE
-// =====================================================
+function togglePlayback() {{
 
-function togglePlayback(){{
-
-    if(currentIndex < 0){{
+    if (
+        currentIndex < 0
+    ) {{
 
         showMessage(
             "먼저 앨범을 LP 위에 올려주세요."
@@ -1832,8 +2015,7 @@ function togglePlayback(){{
         return;
     }}
 
-
-    if(!audio.src){{
+    if (!audio.src) {{
 
         loadAndPlay(
             currentIndex
@@ -1842,18 +2024,18 @@ function togglePlayback(){{
         return;
     }}
 
-
-    if(audio.paused){{
+    if (audio.paused) {{
 
         const promise =
             audio.play();
 
-        if(
+        if (
             promise &&
             promise.catch
-        ){{
+        ) {{
+
             promise.catch(
-                () => {{}}
+                function() {{}}
             );
         }}
 
@@ -1878,17 +2060,13 @@ function togglePlayback(){{
 }}
 
 
-// =====================================================
-// STOP
-// =====================================================
-
-function stopPlayback(){{
+function stopPlayback() {{
 
     audio.pause();
 
-    try{{
+    try {{
         audio.currentTime = 0;
-    }}catch(e){{}}
+    }} catch(e) {{}}
 
     vinyl.classList.remove(
         "spinning"
@@ -1901,13 +2079,9 @@ function stopPlayback(){{
 }}
 
 
-// =====================================================
-// AUDIO END
-// =====================================================
-
 audio.addEventListener(
     "ended",
-    () => {{
+    function() {{
 
         vinyl.classList.remove(
             "spinning"
@@ -1919,13 +2093,9 @@ audio.addEventListener(
 );
 
 
-// =====================================================
-// VINYL CLICK
-// =====================================================
-
 vinyl.addEventListener(
     "click",
-    () => {{
+    function() {{
 
         clearTimeout(
             clickTimer
@@ -1933,21 +2103,18 @@ vinyl.addEventListener(
 
         clickTimer =
             setTimeout(
-                () =>
-                    togglePlayback(),
+                function() {{
+                    togglePlayback();
+                }},
                 220
             );
     }}
 );
 
 
-// =====================================================
-// VINYL DOUBLE CLICK
-// =====================================================
-
 vinyl.addEventListener(
     "dblclick",
-    () => {{
+    function() {{
 
         clearTimeout(
             clickTimer
@@ -1958,14 +2125,10 @@ vinyl.addEventListener(
 );
 
 
-// =====================================================
-// MAKE CARD
-// =====================================================
-
 function makeCard(
     track,
     index
-){{
+) {{
 
     const card =
         document.createElement(
@@ -1980,7 +2143,6 @@ function makeCard(
 
     card.dataset.index =
         index;
-
 
     card.innerHTML = `
         <img
@@ -2012,11 +2174,9 @@ function makeCard(
         </div>
     `;
 
-
-    // 드래그 시작
     card.addEventListener(
         "dragstart",
-        event => {{
+        function(event) {{
 
             event.dataTransfer.setData(
                 "text/plain",
@@ -2031,45 +2191,39 @@ function makeCard(
         }}
     );
 
-
-    // 드래그 종료
     card.addEventListener(
         "dragend",
-        () => {{
+        function() {{
+
             card.style.opacity =
                 "1";
         }}
     );
 
-
     return card;
 }}
 
 
-// =====================================================
-// RENDER CARDS
-// =====================================================
+function renderCards() {{
 
-function renderCards(){{
+    cardsEl.innerHTML = "";
 
-    if(!TRACKS.length){{
+    if (!TRACKS.length) {{
 
-        cardsEl.innerHTML =
-            `
+        cardsEl.innerHTML = `
             <div class="empty">
                 검색 결과가 없습니다.
                 <br>
                 가수 이름이나 곡 제목으로
                 다시 찾아보세요.
             </div>
-            `;
+        `;
 
         return;
     }}
 
-
     TRACKS.forEach(
-        (track, index) => {{
+        function(track,index) {{
 
             cardsEl.appendChild(
                 makeCard(
@@ -2082,13 +2236,9 @@ function renderCards(){{
 }}
 
 
-// =====================================================
-// DRAG OVER
-// =====================================================
-
 deck.addEventListener(
     "dragover",
-    event => {{
+    function(event) {{
 
         event.preventDefault();
 
@@ -2101,31 +2251,24 @@ deck.addEventListener(
 );
 
 
-// =====================================================
-// DRAG LEAVE
-// =====================================================
-
 deck.addEventListener(
     "dragleave",
-    () => {{
+    function() {{
 
-        deck.style.filter = "";
+        deck.style.filter =
+            "";
     }}
 );
 
 
-// =====================================================
-// DROP
-// =====================================================
-
 deck.addEventListener(
     "drop",
-    event => {{
+    function(event) {{
 
         event.preventDefault();
 
-        deck.style.filter = "";
-
+        deck.style.filter =
+            "";
 
         const index =
             Number(
@@ -2134,23 +2277,20 @@ deck.addEventListener(
                 )
             );
 
-
-        if(
+        if (
             Number.isFinite(index) &&
             TRACKS[index]
-        ){{
-            loadAndPlay(index);
+        ) {{
+
+            loadAndPlay(
+                index
+            );
         }}
     }}
 );
 
 
-// =====================================================
-// INITIAL RENDER
-// =====================================================
-
 renderCards();
-
 
 </script>
 
@@ -2167,12 +2307,12 @@ renderCards();
 
 
 # =========================================================
-# HOME
+# HOME PAGE
 # =========================================================
 
 def home_page():
 
-    st.markdown(
+    rr_html(
         """
         <div class="rr-home-card">
 
@@ -2190,7 +2330,7 @@ def home_page():
                 style="margin-top:18px;"
             >
                 나무 향이 밴 작은 레코드 바.<br>
-                한 장을 골라 올리고,
+                한 장을 골라 올리고,<br>
                 잠깐 머물다 가세요.
             </div>
 
@@ -2199,13 +2339,10 @@ def home_page():
             </div>
 
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
-
     st.write("")
-
 
     if st.button(
         "ENTER ROOM",
@@ -2216,7 +2353,7 @@ def home_page():
 
 
 # =========================================================
-# CHOICE
+# CHOICE PAGE
 # =========================================================
 
 def choice_page():
@@ -2225,8 +2362,7 @@ def choice_page():
         "THE ROOM"
     )
 
-
-    st.markdown(
+    rr_html(
         """
         <div
             style="
@@ -2260,13 +2396,10 @@ def choice_page():
             </div>
 
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
-
     c1, c2 = st.columns(2)
-
 
     with c1:
 
@@ -2277,7 +2410,6 @@ def choice_page():
 
             go("listen")
 
-
     with c2:
 
         if st.button(
@@ -2287,9 +2419,7 @@ def choice_page():
 
             go("recommend")
 
-
     st.write("")
-
 
     if st.button(
         "← 처음으로",
@@ -2300,7 +2430,7 @@ def choice_page():
 
 
 # =========================================================
-# LISTEN
+# LISTEN PAGE
 # =========================================================
 
 def listen_page():
@@ -2309,8 +2439,7 @@ def listen_page():
         "LISTEN"
     )
 
-
-    st.markdown(
+    rr_html(
         """
         <div style="margin-bottom:10px;">
 
@@ -2336,14 +2465,8 @@ def listen_page():
             </div>
 
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
-
-
-    # =====================================================
-    # SEARCH FORM
-    # =====================================================
 
     with st.form(
         "search_form",
@@ -2352,30 +2475,26 @@ def listen_page():
 
         query = st.text_input(
             "검색",
-            value=st.session_state.search_term,
+            value=(
+                st.session_state.search_term
+            ),
             placeholder=(
-                "예: 뉴진스 / 아이유 / 지코 / "
-                "Love wins all"
+                "예: 뉴진스 / 아이유 / 지코 / Love wins all"
             ),
             label_visibility="collapsed",
         )
-
 
         submitted = st.form_submit_button(
             "SEARCH"
         )
 
-
-    # =====================================================
-    # SEARCH
-    # =====================================================
-
     if submitted:
 
         term = query.strip()
 
-        st.session_state.search_term = term
-
+        st.session_state.search_term = (
+            term
+        )
 
         if term:
 
@@ -2384,7 +2503,9 @@ def listen_page():
             ):
 
                 st.session_state.results = (
-                    search_music(term)
+                    search_music(
+                        term
+                    )
                 )
 
         else:
@@ -2392,58 +2513,58 @@ def listen_page():
             st.session_state.results = []
 
 
-    # =====================================================
-    # NO RESULT WARNING
-    # =====================================================
+    # 검색 결과 수 표시
+    count = len(
+        st.session_state.results
+    )
 
-    if (
-        st.session_state.search_term
-        and not st.session_state.results
-    ):
+    rr_html(
+        f"""
+        <div
+            style="
+                margin:
+                    22px 0 12px;
+                font:
+                    10px
+                    'DM Mono',
+                    monospace;
+                color:
+                    #b99567;
+                letter-spacing:
+                    .15em;
+                text-transform:
+                    uppercase;
+            "
+        >
+            SEARCH RESULTS · {count} RECORDS
+        </div>
+        """
+    )
 
-        st.warning(
-            "검색 결과를 찾지 못했어요. "
-            "가수 이름이나 곡 제목을 "
-            "조금 다르게 입력해 보세요."
-        )
 
-
-    # =====================================================
-    # PLAYER / EMPTY SHELF
-    # =====================================================
-
-    if st.session_state.results:
-
-        track_cards_component(
-            st.session_state.results,
-            "listen"
-        )
-
-    else:
-
-        track_cards_component(
-            [],
-            "empty"
-        )
+    render_music_room(
+        st.session_state.results
+    )
 
 
     st.write("")
 
-
-    # =====================================================
-    # BACK
-    # =====================================================
 
     if st.button(
         "← ROOM으로 돌아가기",
         key="back_choice_listen"
     ):
 
+        # 다른 페이지로 갈 때
+        # 이전 음악 검색 결과도 초기화
+        st.session_state.search_term = ""
+        st.session_state.results = []
+
         go("choice")
 
 
 # =========================================================
-# RECOMMEND
+# RECOMMEND PAGE
 # =========================================================
 
 def recommend_page():
@@ -2452,8 +2573,7 @@ def recommend_page():
         "DISCOVER"
     )
 
-
-    st.markdown(
+    rr_html(
         """
         <div style="margin-bottom:16px;">
 
@@ -2478,31 +2598,17 @@ def recommend_page():
             </div>
 
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
     moods = {
-
-        "새벽":
-            "새벽 감성",
-
-        "드라이브":
-            "drive pop",
-
-        "설렘":
-            "love pop",
-
-        "비 오는 날":
-            "rainy day",
-
-        "집중":
-            "lofi",
-
-        "퇴근길":
-            "city pop",
-
+        "새벽":"새벽 감성",
+        "드라이브":"drive pop",
+        "설렘":"love pop",
+        "비 오는 날":"rainy day",
+        "집중":"lofi",
+        "퇴근길":"city pop",
     }
 
 
@@ -2532,22 +2638,25 @@ def recommend_page():
         ):
 
             st.session_state.results = (
-                seed_search(chosen)[:15]
+                recommendation_search(
+                    chosen
+                )[:15]
             )
 
-        st.session_state.search_term = chosen
+        st.session_state.search_term = (
+            chosen
+        )
 
 
     if st.session_state.results:
 
-        track_cards_component(
-            st.session_state.results,
-            "recommend"
+        render_music_room(
+            st.session_state.results
         )
 
     else:
 
-        st.markdown(
+        rr_html(
             """
             <div
                 style="
@@ -2569,8 +2678,7 @@ def recommend_page():
                 선택한 레코드가
                 이 방에 놓입니다.
             </div>
-            """,
-            unsafe_allow_html=True,
+            """
         )
 
 
@@ -2579,8 +2687,11 @@ def recommend_page():
 
     if st.button(
         "← ROOM으로 돌아가기",
-        key="back_choice_reco"
+        key="back_choice_recommend"
     ):
+
+        st.session_state.search_term = ""
+        st.session_state.results = []
 
         go("choice")
 
@@ -2593,21 +2704,17 @@ if st.session_state.page == "home":
 
     home_page()
 
-
 elif st.session_state.page == "choice":
 
     choice_page()
-
 
 elif st.session_state.page == "listen":
 
     listen_page()
 
-
 elif st.session_state.page == "recommend":
 
     recommend_page()
-
 
 else:
 

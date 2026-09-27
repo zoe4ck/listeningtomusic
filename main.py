@@ -188,7 +188,6 @@ def itunes_request(term, country="KR", entity="song", limit=50, attribute=None):
             "limit": limit,
             "lang": "ko_kr",
         }
-
         if attribute:
             params["attribute"] = attribute
 
@@ -197,22 +196,14 @@ def itunes_request(term, country="KR", entity="song", limit=50, attribute=None):
             params=params,
             timeout=8,
         )
-
         response.raise_for_status()
-
         return response.json().get("results", [])
-
     except Exception:
         return []
 
 
 @st.cache_data(ttl=600, show_spinner=False)
-def itunes_song_search(
-    term,
-    country="KR",
-    limit=50,
-    attribute=None
-):
+def itunes_song_search(term, country="KR", limit=50, attribute=None):
     return itunes_request(
         term,
         country=country,
@@ -223,10 +214,7 @@ def itunes_song_search(
 
 
 @st.cache_data(ttl=600, show_spinner=False)
-def itunes_artist_search(
-    term,
-    country="KR"
-):
+def itunes_artist_search(term, country="KR"):
     return itunes_request(
         term,
         country=country,
@@ -236,11 +224,7 @@ def itunes_artist_search(
 
 
 @st.cache_data(ttl=600, show_spinner=False)
-def itunes_artist_tracks(
-    artist_id,
-    country="KR",
-    limit=100
-):
+def itunes_artist_tracks(artist_id, country="KR", limit=100):
     try:
         response = requests.get(
             "https://itunes.apple.com/lookup",
@@ -252,91 +236,46 @@ def itunes_artist_tracks(
             },
             timeout=8,
         )
-
         response.raise_for_status()
-
-        data = response.json().get(
-            "results",
-            []
-        )
-
+        data = response.json().get("results", [])
         return [
             item
             for item in data
             if item.get("wrapperType") == "track"
             and item.get("kind") == "song"
         ]
-
     except Exception:
         return []
 
 
 def normalize_tracks(items):
-
     result = []
     seen = set()
 
     for item in items:
+        track = (item.get("trackName") or "").strip()
+        artist = (item.get("artistName") or "").strip()
+        artwork = item.get("artworkUrl100")
+        preview = item.get("previewUrl")
 
-        track = (
-            item.get("trackName")
-            or ""
-        ).strip()
-
-        artist = (
-            item.get("artistName")
-            or ""
-        ).strip()
-
-        artwork = item.get(
-            "artworkUrl100"
-        )
-
-        preview = item.get(
-            "previewUrl"
-        )
-
-        if (
-            not track
-            or not artist
-            or not artwork
-            or not preview
-        ):
+        if not track or not artist or not artwork or not preview:
             continue
 
-        key = (
-            track.casefold(),
-            artist.casefold()
-        )
-
+        key = (track.casefold(), artist.casefold())
         if key in seen:
             continue
-
         seen.add(key)
 
-        artwork = artwork.replace(
-            "100x100bb",
-            "600x600bb"
-        )
+        artwork = artwork.replace("100x100bb", "600x600bb")
 
         result.append(
             {
                 "track": track,
                 "artist": artist,
-                "album": (
-                    item.get(
-                        "collectionName"
-                    )
-                    or ""
-                ),
+                "album": item.get("collectionName") or "",
                 "cover": artwork,
                 "preview": preview,
-                "url": (
-                    item.get(
-                        "trackViewUrl"
-                    )
-                    or ""
-                ),
+                "url": item.get("trackViewUrl") or "",
             }
         )
 
@@ -344,94 +283,52 @@ def normalize_tracks(items):
 
 
 def search_music(term):
-
     term = term.strip()
-
     if not term:
         return []
 
-    normalized_term = (
-        term.casefold().strip()
-    )
+    normalized_term = term.casefold().strip()
 
     # -----------------------------------------------------
     # 1. Search artists in both Korean and US catalogs.
+    #    This fixes cases such as ZICO returning 0 results
+    #    from the KR artist endpoint.
     # -----------------------------------------------------
-
     artists = []
     seen_artist_ids = set()
 
-    for country in (
-        "KR",
-        "US"
-    ):
-
-        for artist in itunes_artist_search(
-            term,
-            country=country
-        ):
-
-            artist_id = artist.get(
-                "artistId"
-            )
-
-            if (
-                not artist_id
-                or artist_id
-                in seen_artist_ids
-            ):
+    for country in ("KR", "US"):
+        for artist in itunes_artist_search(term, country=country):
+            artist_id = artist.get("artistId")
+            if not artist_id or artist_id in seen_artist_ids:
                 continue
+            seen_artist_ids.add(artist_id)
+            artists.append(artist)
 
-            seen_artist_ids.add(
-                artist_id
-            )
-
-            artists.append(
-                artist
-            )
-
-    # Exact artist name first.
-
+    # Exact artist name first, then partial match.
     exact_artists = [
         artist
         for artist in artists
-        if (
-            artist.get(
-                "artistName"
-            )
-            or ""
-        ).strip().casefold()
+        if (artist.get("artistName") or "").strip().casefold()
         == normalized_term
     ]
 
-    # Then partial artist name.
-
     if not exact_artists:
-
         exact_artists = [
             artist
             for artist in artists
             if normalized_term
-            in (
-                artist.get(
-                    "artistName"
-                )
-                or ""
-            ).strip().casefold()
+            in (artist.get("artistName") or "").strip().casefold()
         ]
 
     # -----------------------------------------------------
-    # 2. Get songs belonging to the artist.
+    # 2. If an artist was found, get that artist's songs.
+    #    Try KR first, then US.
     # -----------------------------------------------------
-
     artist_tracks = []
 
     for artist in exact_artists[:3]:
-
-        artist_id = artist.get(
-            "artistId"
-        )
-
+        artist_id = artist.get("artistId")
         if not artist_id:
             continue
 
@@ -442,38 +339,26 @@ def search_music(term):
         )
 
         if not tracks:
-
             tracks = itunes_artist_tracks(
                 artist_id,
                 country="US",
                 limit=100,
             )
 
-        artist_tracks.extend(
-            tracks
-        )
+        artist_tracks.extend(tracks)
 
-    normalized_artist_tracks = (
-        normalize_tracks(
-            artist_tracks
-        )
-    )
+    normalized_artist_tracks = normalize_tracks(artist_tracks)
 
     if normalized_artist_tracks:
-
         return normalized_artist_tracks[:24]
 
     # -----------------------------------------------------
-    # 3. Direct song search.
+    # 3. Search songs directly in both catalogs and prefer
+    #    results whose artist name exactly matches the query.
     # -----------------------------------------------------
-
     all_songs = []
 
-    for country in (
-        "KR",
-        "US"
-    ):
-
+    for country in ("KR", "US"):
         all_songs.extend(
             itunes_song_search(
                 term,
@@ -485,12 +370,7 @@ def search_music(term):
     exact_artist_songs = [
         song
         for song in all_songs
-        if (
-            song.get(
-                "artistName"
-            )
-            or ""
-        ).strip().casefold()
+        if (song.get("artistName") or "").strip().casefold()
         == normalized_term
     ]
 
@@ -499,95 +379,61 @@ def search_music(term):
     )
 
     if normalized_exact:
-
         return normalized_exact[:24]
 
     # -----------------------------------------------------
-    # 4. Partial artist match.
+    # 4. Partial artist-name match.
     # -----------------------------------------------------
-
     partial_artist_songs = [
         song
         for song in all_songs
         if normalized_term
-        in (
-            song.get(
-                "artistName"
-            )
-            or ""
-        ).strip().casefold()
+        in (song.get("artistName") or "").strip().casefold()
     ]
 
-    normalized_partial = (
-        normalize_tracks(
-            partial_artist_songs
-        )
+    normalized_partial = normalize_tracks(
+        partial_artist_songs
     )
 
     if normalized_partial:
-
         return normalized_partial[:24]
 
     # -----------------------------------------------------
-    # 5. Last fallback.
+    # 5. Last fallback: normal song search.
     # -----------------------------------------------------
-
-    return normalize_tracks(
-        all_songs
-    )[:24]
+    return normalize_tracks(all_songs)[:24]
 
 
 # =========================================================
-# HTML MUSIC ROOM
+# HTML music room
 # =========================================================
 
 def render_music_room(results):
-
     safe_results = []
 
     for item in results[:24]:
-
         safe_results.append(
             {
-                "track":
-                    item["track"],
-
-                "artist":
-                    item["artist"],
-
-                "album":
-                    item["album"],
-
-                "cover":
-                    item["cover"],
-
-                "preview":
-                    item["preview"],
-
-                "url":
-                    item["url"],
+                "track": item["track"],
+                "artist": item["artist"],
+                "album": item["album"],
+                "cover": item["cover"],
+                "preview": item["preview"],
+                "url": item["url"],
             }
         )
 
     data_json = json.dumps(
         safe_results,
         ensure_ascii=False,
-    ).replace(
-        "</",
-        "<\\/"
-    )
+    ).replace("</", "<\\/")
 
     component_html = """
 <!DOCTYPE html>
-
 <html>
-
 <head>
-
 <meta charset="utf-8">
-
 <style>
-
 * {
     box-sizing: border-box;
 }
@@ -605,74 +451,36 @@ body {
 
 .records {
     display: grid;
-    grid-template-columns:
-        repeat(
-            4,
-            minmax(0, 1fr)
-        );
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 18px;
 }
 
 .card {
-    background:
-        linear-gradient(
-            145deg,
-            #5b3520,
-            #2a170d
-        );
-
-    border:
-        1px solid
-        rgba(211,173,115,.40);
-
-    border-radius:
-        14px;
-
-    padding:
-        10px;
-
-    cursor:
-        pointer;
-
-    box-shadow:
-        0 12px 28px
-        rgba(0,0,0,.27);
-
-    transition:
-        transform .18s,
-        border-color .18s,
-        box-shadow .18s;
-
-    user-select:
-        none;
+    background: linear-gradient(145deg, #5b3520, #2a170d);
+    border: 1px solid rgba(211,173,115,.40);
+    border-radius: 14px;
+    padding: 10px;
+    cursor: pointer;
+    box-shadow: 0 12px 28px rgba(0,0,0,.27);
+    transition: transform .18s, border-color .18s, box-shadow .18s;
+    user-select: none;
 }
 
 .card:hover {
-    transform:
-        translateY(-5px);
-
-    border-color:
-        #d5b27d;
-
-    box-shadow:
-        0 16px 35px
-        rgba(0,0,0,.36);
+    transform: translateY(-5px);
+    border-color: #d5b27d;
+    box-shadow: 0 16px 35px rgba(0,0,0,.36);
 }
 
 .card:active {
-    cursor:
-        grabbing;
+    cursor: grabbing;
 }
 
 .card.selected {
-    border-color:
-        #e0bd86;
-
+    border-color: #e0bd86;
     box-shadow:
-        0 0 0 2px
-        rgba(224,189,134,.16),
-        0 16px 35px
-        rgba(0,0,0,.36);
+        0 0 0 2px rgba(224,189,134,.16),
+        0 16px 35px rgba(0,0,0,.36);
 }
 
 .cover {
@@ -706,30 +514,14 @@ body {
 .player-wrap {
     margin-top: 42px;
     padding: 34px 22px 32px;
-
     background:
-        linear-gradient(
-            145deg,
-            rgba(91,54,31,.93),
-            rgba(35,19,11,.98)
-        );
-
-    border:
-        1px solid
-        #916a43;
-
-    border-radius:
-        24px;
-
+        linear-gradient(145deg, rgba(91,54,31,.93), rgba(35,19,11,.98));
+    border: 1px solid #916a43;
+    border-radius: 24px;
     box-shadow:
-        inset 0 1px 0
-        rgba(255,255,255,.045),
-
-        0 24px 55px
-        rgba(0,0,0,.38);
-
-    text-align:
-        center;
+        inset 0 1px 0 rgba(255,255,255,.045),
+        0 24px 55px rgba(0,0,0,.38);
+    text-align: center;
 }
 
 .player-heading {
@@ -753,24 +545,11 @@ body {
 
 .turntable {
     position: relative;
-
-    width:
-        min(
-            410px,
-            72vw
-        );
-
-    aspect-ratio:
-        1;
-
-    margin:
-        28px auto 20px;
-
-    border-radius:
-        50%;
-
-    cursor:
-        pointer;
+    width: min(410px, 72vw);
+    aspect-ratio: 1;
+    margin: 28px auto 20px;
+    border-radius: 50%;
+    cursor: pointer;
 
     background:
         repeating-radial-gradient(
@@ -782,265 +561,135 @@ body {
         );
 
     box-shadow:
-        0 20px 45px
-        rgba(0,0,0,.60),
+        0 20px 45px rgba(0,0,0,.60),
+        inset 0 0 0 9px #272727,
+        inset 0 0 0 11px #080808;
 
-        inset 0 0 0 9px
-        #272727,
-
-        inset 0 0 0 11px
-        #080808;
-
-    transition:
-        transform .15s,
-        box-shadow .15s;
+    transition: transform .15s, box-shadow .15s;
 }
 
 .turntable:hover {
     box-shadow:
-        0 23px 50px
-        rgba(0,0,0,.65),
-
-        inset 0 0 0 9px
-        #302f2e,
-
-        inset 0 0 0 11px
-        #080808;
+        0 23px 50px rgba(0,0,0,.65),
+        inset 0 0 0 9px #302f2e,
+        inset 0 0 0 11px #080808;
 }
 
 .turntable.spinning {
-    animation:
-        vinylSpin
-        2.0s
-        linear
-        infinite;
+    animation: vinylSpin 2.0s linear infinite;
 }
 
 @keyframes vinylSpin {
-
-    from {
-        transform:
-            rotate(0deg);
-    }
-
-    to {
-        transform:
-            rotate(360deg);
-    }
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
+/*
+    중요:
+    앨범 커버를 정사각형으로 LP 위에 올리지 않는다.
+    중앙에 원형 라벨처럼 표시한다.
+*/
 .label {
     position: absolute;
-
-    width:
-        128px;
-
-    height:
-        128px;
-
-    left:
-        50%;
-
-    top:
-        50%;
-
-    transform:
-        translate(
-            -50%,
-            -50%
-        );
-
-    border-radius:
-        50%;
-
-    overflow:
-        hidden;
-
-    border:
-        4px solid
-        #252525;
-
+    width: 128px;
+    height: 128px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid #252525;
     box-shadow:
-        0 4px 13px
-        rgba(0,0,0,.55),
-
-        inset 0 0 0 2px
-        rgba(255,255,255,.12);
+        0 4px 13px rgba(0,0,0,.55),
+        inset 0 0 0 2px rgba(255,255,255,.12);
 }
 
 .label img {
-    width:
-        100%;
-
-    height:
-        100%;
-
-    object-fit:
-        cover;
-
-    display:
-        block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
 .center-hole {
-    position:
-        absolute;
-
-    z-index:
-        5;
-
-    width:
-        13px;
-
-    height:
-        13px;
-
-    left:
-        50%;
-
-    top:
-        50%;
-
-    transform:
-        translate(
-            -50%,
-            -50%
-        );
-
-    border-radius:
-        50%;
-
-    background:
-        #070707;
-
-    border:
-        2px solid
-        #555;
+    position: absolute;
+    z-index: 5;
+    width: 13px;
+    height: 13px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: #070707;
+    border: 2px solid #555;
 }
 
 .drop-hint {
-    color:
-        #9f815f;
-
-    font-size:
-        11px;
-
-    letter-spacing:
-        .08em;
-
-    margin-top:
-        7px;
+    color: #9f815f;
+    font-size: 11px;
+    letter-spacing: .08em;
+    margin-top: 7px;
 }
 
 .turntable.drag-over {
     box-shadow:
-        0 0 0 3px
-        rgba(211,173,115,.75),
-
-        0 24px 55px
-        rgba(0,0,0,.65),
-
-        inset 0 0 0 9px
-        #302f2e,
-
-        inset 0 0 0 11px
-        #080808;
-
-    transform:
-        scale(1.02);
+        0 0 0 3px rgba(211,173,115,.75),
+        0 24px 55px rgba(0,0,0,.65),
+        inset 0 0 0 9px #302f2e,
+        inset 0 0 0 11px #080808;
+    transform: scale(1.02);
 }
 
 .empty {
-    text-align:
-        center;
-
-    color:
-        #9d7e5d;
-
-    padding:
-        42px 10px;
-
-    border:
-        1px dashed
-        rgba(176,137,91,.32);
-
-    border-radius:
-        14px;
+    text-align: center;
+    color: #9d7e5d;
+    padding: 42px 10px;
+    border: 1px dashed rgba(176,137,91,.32);
+    border-radius: 14px;
 }
 
 @media (max-width: 900px) {
-
     .records {
-        grid-template-columns:
-            repeat(
-                3,
-                minmax(0,1fr)
-            );
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
 
 @media (max-width: 650px) {
-
     .records {
-        grid-template-columns:
-            repeat(
-                2,
-                minmax(0,1fr)
-            );
-
-        gap:
-            11px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 11px;
     }
 
     .card {
-        padding:
-            8px;
+        padding: 8px;
     }
 
     .track {
-        font-size:
-            12px;
+        font-size: 12px;
     }
 
     .artist {
-        font-size:
-            11px;
+        font-size: 11px;
     }
 }
-
 </style>
-
 </head>
 
 <body>
 
 <div class="room">
 
-    <div
-        class="records"
-        id="records"
-    ></div>
+    <div class="records" id="records"></div>
 
-    <div
-        class="player-wrap"
-        id="playerWrap"
-    >
+    <div class="player-wrap" id="playerWrap">
 
-        <div class="player-heading">
-            THE RECORD PLAYER
-        </div>
+        <div class="player-heading">THE RECORD PLAYER</div>
 
-        <div
-            class="now-title"
-            id="nowTitle"
-        >
+        <div class="now-title" id="nowTitle">
             LP를 이곳에 올려주세요
         </div>
 
-        <div
-            class="now-artist"
-            id="nowArtist"
-        >
+        <div class="now-artist" id="nowArtist">
             앨범 커버를 드래그해서 LP 위에 놓으면 재생됩니다.
         </div>
 
@@ -1049,11 +698,7 @@ body {
             id="turntable"
             title="클릭: 재생 / 일시정지 · 더블클릭: 정지"
         >
-
-            <div
-                class="center-hole"
-            ></div>
-
+            <div class="center-hole"></div>
         </div>
 
         <div class="drop-hint">
@@ -1064,581 +709,234 @@ body {
 
 </div>
 
-<audio
-    id="audio"
-    preload="none"
-></audio>
+<audio id="audio" preload="none"></audio>
 
 <script>
+const songs = __SONGS_JSON__;
 
-const songs =
-    __SONGS_JSON__;
+const records = document.getElementById("records");
+const turntable = document.getElementById("turntable");
+const audio = document.getElementById("audio");
+const nowTitle = document.getElementById("nowTitle");
+const nowArtist = document.getElementById("nowArtist");
+const playerWrap = document.getElementById("playerWrap");
 
-const records =
-    document.getElementById(
-        "records"
-    );
-
-const turntable =
-    document.getElementById(
-        "turntable"
-    );
-
-const audio =
-    document.getElementById(
-        "audio"
-    );
-
-const nowTitle =
-    document.getElementById(
-        "nowTitle"
-    );
-
-const nowArtist =
-    document.getElementById(
-        "nowArtist"
-    );
-
-const playerWrap =
-    document.getElementById(
-        "playerWrap"
-    );
-
-let selected =
-    null;
-
-let playing =
-    false;
-
+let selected = null;
+let playing = false;
 
 function escapeText(value) {
-
-    return String(
-        value ?? ""
-    );
+    return String(value ?? "");
 }
-
 
 function createCards() {
-
     if (!songs.length) {
-
         records.innerHTML =
             '<div class="empty" style="grid-column:1/-1;">검색 결과가 없습니다.</div>';
-
         return;
     }
 
+    songs.forEach((song, index) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.draggable = true;
 
-    songs.forEach(
-        function(song, index) {
+        const img = document.createElement("img");
+        img.className = "cover";
+        img.src = song.cover;
+        img.alt = "";
 
-            const card =
-                document.createElement(
-                    "div"
-                );
+        const track = document.createElement("div");
+        track.className = "track";
+        track.textContent = escapeText(song.track);
 
-            card.className =
-                "card";
+        const artist = document.createElement("div");
+        artist.className = "artist";
+        artist.textContent = escapeText(song.artist);
 
-            card.draggable =
-                true;
+        card.appendChild(img);
+        card.appendChild(track);
+        card.appendChild(artist);
 
-
-            const img =
-                document.createElement(
-                    "img"
-                );
-
-            img.className =
-                "cover";
-
-            img.src =
-                song.cover;
-
-            img.alt =
-                "";
-
-
-            const track =
-                document.createElement(
-                    "div"
-                );
-
-            track.className =
-                "track";
-
-            track.textContent =
-                escapeText(
-                    song.track
-                );
-
-
-            const artist =
-                document.createElement(
-                    "div"
-                );
-
-            artist.className =
-                "artist";
-
-            artist.textContent =
-                escapeText(
-                    song.artist
-                );
-
-
-            card.appendChild(
-                img
+        card.addEventListener("dragstart", function(event) {
+            event.dataTransfer.effectAllowed = "copy";
+            event.dataTransfer.setData(
+                "text/plain",
+                String(index)
             );
+            card.style.opacity = ".55";
+        });
 
-            card.appendChild(
-                track
-            );
+        card.addEventListener("dragend", function() {
+            card.style.opacity = "1";
+        });
 
-            card.appendChild(
-                artist
-            );
+        // 앨범을 탭/클릭해도 바로 LP 플레이어로 이동하고 재생
+        card.addEventListener("click", function() {
+            startSong(song);
 
+            document.querySelectorAll(".card.selected").forEach(function(item) {
+                item.classList.remove("selected");
+            });
 
-            card.addEventListener(
-                "dragstart",
-                function(event) {
+            card.classList.add("selected");
 
-                    event.dataTransfer.effectAllowed =
-                        "copy";
+            setTimeout(function() {
+                playerWrap.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start"
+                });
+            }, 80);
+        });
 
-                    event.dataTransfer.setData(
-                        "text/plain",
-                        String(index)
-                    );
-
-                    card.style.opacity =
-                        ".55";
-                }
-            );
-
-
-            card.addEventListener(
-                "dragend",
-                function() {
-
-                    card.style.opacity =
-                        "1";
-                }
-            );
-
-
-            // 앨범을 탭/클릭하면
-            // 바로 재생 + LP 플레이어로 이동
-            card.addEventListener(
-                "click",
-                function() {
-
-                    startSong(
-                        song
-                    );
-
-
-                    document
-                        .querySelectorAll(
-                            ".card.selected"
-                        )
-                        .forEach(
-                            function(item) {
-
-                                item.classList.remove(
-                                    "selected"
-                                );
-                            }
-                        );
-
-
-                    card.classList.add(
-                        "selected"
-                    );
-
-
-                    setTimeout(
-                        function() {
-
-                            playerWrap.scrollIntoView(
-                                {
-                                    behavior:
-                                        "smooth",
-
-                                    block:
-                                        "start"
-                                }
-                            );
-
-                        },
-                        80
-                    );
-
-                }
-            );
-
-
-            records.appendChild(
-                card
-            );
-
-        }
-    );
+        records.appendChild(card);
+    });
 }
-
 
 function setLabel(song) {
+    const old = turntable.querySelector(".label");
+    if (old) old.remove();
 
-    const old =
-        turntable.querySelector(
-            ".label"
-        );
+    const label = document.createElement("div");
+    label.className = "label";
 
-    if (old) {
-        old.remove();
-    }
+    const img = document.createElement("img");
+    img.src = song.cover;
+    img.alt = "";
 
+    label.appendChild(img);
 
-    const label =
-        document.createElement(
-            "div"
-        );
+    const hole = document.createElement("div");
+    hole.className = "center-hole";
 
-    label.className =
-        "label";
-
-
-    const img =
-        document.createElement(
-            "img"
-        );
-
-    img.src =
-        song.cover;
-
-    img.alt =
-        "";
-
-
-    label.appendChild(
-        img
-    );
-
-
-    const hole =
-        document.createElement(
-            "div"
-        );
-
-    hole.className =
-        "center-hole";
-
-
-    turntable.appendChild(
-        label
-    );
-
-    turntable.appendChild(
-        hole
-    );
+    turntable.appendChild(label);
+    turntable.appendChild(hole);
 }
-
 
 function startSong(song) {
+    selected = song;
 
-    selected =
-        song;
+    nowTitle.textContent = escapeText(song.track);
+    nowArtist.textContent = escapeText(song.artist);
 
+    setLabel(song);
 
-    nowTitle.textContent =
-        escapeText(
-            song.track
-        );
-
-    nowArtist.textContent =
-        escapeText(
-            song.artist
-        );
-
-
-    setLabel(
-        song
-    );
-
-
-    audio.src =
-        song.preview;
-
-    audio.currentTime =
-        0;
-
+    audio.src = song.preview;
+    audio.currentTime = 0;
 
     audio.play()
-        .then(
-            function() {
-
-                playing =
-                    true;
-
-                turntable.classList.add(
-                    "spinning"
-                );
-
-            }
-        )
-        .catch(
-            function() {
-
-                playing =
-                    false;
-
-                turntable.classList.remove(
-                    "spinning"
-                );
-
-            }
-        );
+        .then(function() {
+            playing = true;
+            turntable.classList.add("spinning");
+        })
+        .catch(function() {
+            playing = false;
+            turntable.classList.remove("spinning");
+        });
 }
-
 
 function pauseSong() {
-
-    if (!selected) {
-        return;
-    }
+    if (!selected) return;
 
     audio.pause();
-
-    playing =
-        false;
-
-    turntable.classList.remove(
-        "spinning"
-    );
+    playing = false;
+    turntable.classList.remove("spinning");
 }
-
 
 function resumeSong() {
-
-    if (!selected) {
-        return;
-    }
-
+    if (!selected) return;
 
     audio.play()
-        .then(
-            function() {
-
-                playing =
-                    true;
-
-                turntable.classList.add(
-                    "spinning"
-                );
-
-            }
-        )
-        .catch(
-            function() {}
-        );
+        .then(function() {
+            playing = true;
+            turntable.classList.add("spinning");
+        })
+        .catch(function() {});
 }
-
 
 function stopSong() {
-
     audio.pause();
 
-
     try {
-
-        audio.currentTime =
-            0;
-
+        audio.currentTime = 0;
     } catch (e) {}
 
-
-    playing =
-        false;
-
-    turntable.classList.remove(
-        "spinning"
-    );
-
+    playing = false;
+    turntable.classList.remove("spinning");
 
     if (selected) {
-
-        nowTitle.textContent =
-            escapeText(
-                selected.track
-            );
-
-        nowArtist.textContent =
-            escapeText(
-                selected.artist
-            );
+        nowTitle.textContent = escapeText(selected.track);
+        nowArtist.textContent = escapeText(selected.artist);
     }
 }
 
+turntable.addEventListener("dragover", function(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    turntable.classList.add("drag-over");
+});
 
-turntable.addEventListener(
-    "dragover",
-    function(event) {
+turntable.addEventListener("dragleave", function() {
+    turntable.classList.remove("drag-over");
+});
 
-        event.preventDefault();
+turntable.addEventListener("drop", function(event) {
+    event.preventDefault();
+    turntable.classList.remove("drag-over");
 
-        event.dataTransfer.dropEffect =
-            "copy";
+    const index = Number(
+        event.dataTransfer.getData("text/plain")
+    );
 
-        turntable.classList.add(
-            "drag-over"
-        );
+    if (
+        Number.isInteger(index) &&
+        index >= 0 &&
+        index < songs.length
+    ) {
+        startSong(songs[index]);
     }
-);
+});
 
+turntable.addEventListener("click", function() {
+    if (!selected) return;
 
-turntable.addEventListener(
-    "dragleave",
-    function() {
-
-        turntable.classList.remove(
-            "drag-over"
-        );
+    if (playing) {
+        pauseSong();
+    } else {
+        resumeSong();
     }
-);
+});
 
+turntable.addEventListener("dblclick", function(event) {
+    event.preventDefault();
+    stopSong();
+});
 
-turntable.addEventListener(
-    "drop",
-    function(event) {
-
-        event.preventDefault();
-
-        turntable.classList.remove(
-            "drag-over"
-        );
-
-
-        const index =
-            Number(
-                event.dataTransfer.getData(
-                    "text/plain"
-                )
-            );
-
-
-        if (
-            Number.isInteger(index)
-            &&
-            index >= 0
-            &&
-            index < songs.length
-        ) {
-
-            startSong(
-                songs[index]
-            );
-        }
-
-    }
-);
-
-
-turntable.addEventListener(
-    "click",
-    function() {
-
-        if (!selected) {
-            return;
-        }
-
-
-        if (playing) {
-
-            pauseSong();
-
-        } else {
-
-            resumeSong();
-
-        }
-
-    }
-);
-
-
-turntable.addEventListener(
-    "dblclick",
-    function(event) {
-
-        event.preventDefault();
-
-        stopSong();
-
-    }
-);
-
-
-audio.addEventListener(
-    "ended",
-    function() {
-
-        playing =
-            false;
-
-        turntable.classList.remove(
-            "spinning"
-        );
-
-    }
-);
-
+audio.addEventListener("ended", function() {
+    playing = false;
+    turntable.classList.remove("spinning");
+});
 
 createCards();
-
 </script>
 
 </body>
-
 </html>
 """
 
-    component_html = (
-        component_html.replace(
-            "__SONGS_JSON__",
-            data_json,
-        )
+    component_html = component_html.replace(
+        "__SONGS_JSON__",
+        data_json,
     )
 
-
-    # 결과 카드가 iframe 높이를 넘어
-    # 잘리는 문제를 방지한다.
-    result_count =
-        len(
-            safe_results
-        )
-
+    # 결과 카드가 iframe 높이를 넘어 잘리는 문제를 방지한다.
+    # PC는 4열, 태블릿/모바일은 CSS에 따라 열 수가 달라질 수 있으므로
+    # 충분한 높이를 계산하고, 실제 페이지 자체가 자연스럽게 스크롤되게 한다.
+    result_count = len(safe_results)
     if result_count == 0:
-
-        component_height =
-            790
-
+        component_height = 790
     else:
-
-        rows =
-            max(
-                1,
-                (
-                    result_count + 3
-                ) // 4
-            )
-
-        component_height =
-            760 + (
-                rows * 410
-            )
-
+        rows = max(1, (result_count + 3) // 4)
+        component_height = 760 + (rows * 410)
 
     components.html(
         component_html,
@@ -1652,40 +950,21 @@ createCards();
 # =========================================================
 
 def show_home():
-
     st.markdown(
         """
         <div class="hero">
-
-            <div class="hero-title">
-                RECORD ROOM
-            </div>
-
-            <div class="hero-sub">
-                오늘의 음악을 한 장의 레코드처럼.
-            </div>
-
+            <div class="hero-title">RECORD ROOM</div>
+            <div class="hero-sub">오늘의 음악을 한 장의 레코드처럼.</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-
-    left, center, right = st.columns(
-        [1, 1.2, 1]
-    )
-
+    left, center, right = st.columns([1, 1.2, 1])
 
     with center:
-
-        if st.button(
-            "ENTER ROOM",
-            use_container_width=True
-        ):
-
-            st.session_state.page =
-                "choice"
-
+        if st.button("ENTER ROOM", use_container_width=True):
+            st.session_state.page = "choice"
             st.rerun()
 
 
@@ -1694,51 +973,25 @@ def show_home():
 # =========================================================
 
 def show_choice():
-
     st.markdown(
         """
         <div class="choice-box">
-
-            <div class="choice-title">
-                WELCOME TO THE ROOM
-            </div>
-
-            <div class="choice-sub">
-                오늘은 무엇을 해볼까요?
-            </div>
-
+            <div class="choice-title">WELCOME TO THE ROOM</div>
+            <div class="choice-sub">오늘은 무엇을 해볼까요?</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-
-    left, center, right = st.columns(
-        [1, 1.15, 1]
-    )
-
+    left, center, right = st.columns([1, 1.15, 1])
 
     with center:
-
-        if st.button(
-            "♫  노래듣기",
-            use_container_width=True
-        ):
-
-            st.session_state.page =
-                "listen"
-
+        if st.button("♫  노래듣기", use_container_width=True):
+            st.session_state.page = "listen"
             st.rerun()
 
-
-        if st.button(
-            "✦  노래 추천받기",
-            use_container_width=True
-        ):
-
-            st.session_state.page =
-                "recommend"
-
+        if st.button("✦  노래 추천받기", use_container_width=True):
+            st.session_state.page = "recommend"
             st.rerun()
 
 
@@ -1747,92 +1000,47 @@ def show_choice():
 # =========================================================
 
 def show_listen():
-
-    if st.button(
-        "← BACK"
-    ):
-
-        st.session_state.page =
-            "choice"
-
+    if st.button("← BACK"):
+        st.session_state.page = "choice"
         st.rerun()
-
 
     st.markdown(
         """
         <div class="rr-header">
-
-            <div class="rr-title">
-                RECORD ROOM
-            </div>
-
-            <div class="rr-small">
-                SEARCH YOUR RECORD
-            </div>
-
+            <div class="rr-title">RECORD ROOM</div>
+            <div class="rr-small">SEARCH YOUR RECORD</div>
             <div class="rr-divider"></div>
-
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-
-    query =
-        st.text_input(
-            "music-search",
-
-            value=
-                st.session_state.query,
-
-            placeholder=
-                "가수 이름이나 노래 제목을 검색해보세요.",
-
-            label_visibility=
-                "collapsed",
-        )
-
+    query = st.text_input(
+        "music-search",
+        value=st.session_state.query,
+        placeholder="가수 이름이나 노래 제목을 검색해보세요.",
+        label_visibility="collapsed",
+    )
 
     if query != st.session_state.query:
-
-        st.session_state.query =
-            query
-
+        st.session_state.query = query
 
         if query.strip():
-
-            with st.spinner(
-                "레코드를 찾는 중..."
-            ):
-
-                st.session_state.results =
-                    search_music(
-                        query
-                    )
-
+            with st.spinner("레코드를 찾는 중..."):
+                st.session_state.results = search_music(query)
         else:
-
-            st.session_state.results =
-                []
-
+            st.session_state.results = []
 
     if not query.strip():
-
         st.markdown(
             """
-            <div class="section-label">
-                RECORDS
-            </div>
+            <div class="section-label">RECORDS</div>
             """,
             unsafe_allow_html=True,
         )
 
-        render_music_room(
-            []
-        )
-
+        render_music_room([])
         return
-
 
     st.markdown(
         f"""
@@ -1843,10 +1051,7 @@ def show_listen():
         unsafe_allow_html=True,
     )
 
-
-    render_music_room(
-        st.session_state.results
-    )
+    render_music_room(st.session_state.results)
 
 
 # =========================================================
@@ -1854,88 +1059,37 @@ def show_listen():
 # =========================================================
 
 def show_recommend():
-
-    if st.button(
-        "← BACK"
-    ):
-
-        st.session_state.page =
-            "choice"
-
+    if st.button("← BACK"):
+        st.session_state.page = "choice"
         st.rerun()
-
 
     st.markdown(
         """
         <div class="choice-box">
-
-            <div class="choice-title">
-                RECORD RECOMMENDATION
-            </div>
-
+            <div class="choice-title">RECORD RECOMMENDATION</div>
             <div class="choice-sub">
                 오늘의 기분을 골라보세요.
             </div>
-
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-
     moods = {
-
-        "오늘은 잔잔하게":
-            "아이유",
-
-        "기분 전환이 필요해":
-            "지코",
-
-        "밤에 듣기 좋은 음악":
-            "검정치마",
-
-        "신나는 음악이 듣고 싶어":
-            "실리카겔",
-
+        "오늘은 잔잔하게": "아이유",
+        "기분 전환이 필요해": "지코",
+        "밤에 듣기 좋은 음악": "검정치마",
+        "신나는 음악이 듣고 싶어": "실리카겔",
     }
 
+    c1, c2 = st.columns(2)
 
-    c1, c2 =
-        st.columns(
-            2
-        )
-
-
-    for i, (
-        mood,
-        artist
-    ) in enumerate(
-        moods.items()
-    ):
-
-        with (
-            c1
-            if i % 2 == 0
-            else c2
-        ):
-
-            if st.button(
-                mood,
-                key=f"mood_{i}",
-                use_container_width=True
-            ):
-
-                st.session_state.query =
-                    artist
-
-                st.session_state.results =
-                    search_music(
-                        artist
-                    )
-
-                st.session_state.page =
-                    "listen"
-
+    for i, (mood, artist) in enumerate(moods.items()):
+        with (c1 if i % 2 == 0 else c2):
+            if st.button(mood, key=f"mood_{i}", use_container_width=True):
+                st.session_state.query = artist
+                st.session_state.results = search_music(artist)
+                st.session_state.page = "listen"
                 st.rerun()
 
 
@@ -1944,17 +1098,13 @@ def show_recommend():
 # =========================================================
 
 if st.session_state.page == "home":
-
     show_home()
 
 elif st.session_state.page == "choice":
-
     show_choice()
 
 elif st.session_state.page == "listen":
-
     show_listen()
 
 elif st.session_state.page == "recommend":
-
     show_recommend()

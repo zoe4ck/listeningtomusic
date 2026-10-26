@@ -1,3 +1,67 @@
+import streamlit as st
+import streamlit.components.v1 as components
+import urllib.parse
+import urllib.request
+import json
+import re
+from html import escape
+
+
+# =========================================================
+# PAGE
+# =========================================================
+
+st.set_page_config(
+    page_title="record hotel",
+    page_icon="♫",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# =========================================================
+# CSS
+# =========================================================
+
+CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Noto+Serif+KR:wght@400;500;600&display=swap');
+
+html, body, [data-testid="stAppViewContainer"] {
+    background:
+        radial-gradient(circle at 55% 35%, #3b281d 0%, #24160f 42%, #120b08 78%, #0b0705 100%)
+        !important;
+}
+
+[data-testid="stHeader"] {
+    background: transparent !important;
+}
+
+[data-testid="stToolbar"] {
+    display: none !important;
+}
+
+.main .block-container {
+    padding-top: 0 !important;
+    max-width: 1400px !important;
+}
+
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
+
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #170d09 0%, #120906 55%, #0d0705 100%) !important;
+    border-right: 1px solid rgba(190,145,92,0.22);
+}
+
+[data-testid="stSidebar"] > div:first-child {
+    padding-top: 35px;
+}
+
+.sidebar-title {
+    color: #d9a96f;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 24px;
     letter-spacing: 4px;
     text-align: center;
 }
@@ -30,163 +94,3 @@
     box-shadow: none !important;
     color: #9b704c !important;
     font-family: "Cormorant Garamond", Georgia, serif !important;
-    font-size: 15px !important;
-    letter-spacing: 4px !important;
-    text-align: left !important;
-    padding: 14px 12px !important;
-}
-
-[data-testid="stSidebar"] .stButton > button:hover {
-    color: #e1b67c !important;
-    background: rgba(190,137,82,0.08) !important;
-}
-
-/* =========================================================
-   COMMON BUTTON
-   ========================================================= */
-
-div[data-testid="stButton"] > button {
-    min-height: 44px !important;
-    width: 100% !important;
-    padding: 0.55rem 1rem !important;
-    line-height: 1.25 !important;
-    white-space: normal !important;
-    background: transparent !important;
-    color: #d8ad79 !important;
-    border: 1px solid rgba(190,145,92,0.5) !important;
-    border-radius: 2px !important;
-    font-family: "Cormorant Garamond", Georgia, serif !important;
-    letter-spacing: 3px !important;
-    transition: 0.25s ease !important;
-}
-
-div[data-testid="stButton"] > button:hover {
-    background: rgba(197,145,88,0.08) !important;
-    border-color: #d5a66c !important;
-    color: #efd7b0 !important;
-}
-
-/* =========================================================
-   MAIN
-   ========================================================= */
-
-.welcome-area {
-    min-height: 82vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-}
-
-.welcome-small {
-    color: #a6784c;
-    font-family: "Cormorant Garamond", Georgia, serif;
-    font-size: 14px;
-    letter-spacing: 5px;
-    margin-bottom: 18px;
-}
-
-.welcome-title {
-    color: #dcae73;
-    font-family: "Cormorant Garamond", Georgia, serif;
-    font-size: clamp(58px, 7vw, 100px);
-    font-weight: 400;
-    letter-spacing: 8px;
-    line-height: 1;
-}
-
-.welcome-line {
-    width: 110px;
-    height: 1px;
-    background: #9c7047;
-    margin: 28px auto;
-}
-
-.welcome-description {
-    color: #bda087;
-    font-family: "Noto Serif KR", serif;
-    font-size: 15px;
-    line-height: 2;
-    letter-spacing: 1px;
-}
-
-/* =========================================================
-   LETTER
-   ========================================================= */
-
-.letter-wrap {
-    min-height: 86vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 35px 20px;
-}
-
-.letter-paper {
-    width: min(1080px, 90vw);
-    min-height: 650px;
-    box-sizing: border-box;
-    padding: 72px 90px;
-    background: radial-gradient(ellipse at center, #f7eedb 0%, #eee0c4 62%, #e2cfac 100%);
-    border: 1px solid rgba(117,80,42,0.18);
-    box-shadow: 0 20px 45px rgba(0,0,0,0.45);
-    position: relative;
-    color: #49382c;
-}
-
-.letter-paper:before {
-    content: "";
-    position: absolute;
-    inset: 15px;
-    border: 1px solid rgba(117,80,42,0.18);
-    pointer-events: none;
-}
-
-.letter-date {
-    color: #856344;
-    text-align: right;
-    font-family: "Cormorant Garamond", Georgia, serif;
-    font-size: 14px;
-    margin-bottom: 48px;
-}
-
-.letter-title {
-    color: #49301f;
-    font-family: "Cormorant Garamond", Georgia, serif;
-    font-size: 34px;
-    letter-spacing: 3px;
-    margin-bottom: 38px;
-}
-
-.letter-body {
-    color: #49382c;
-    font-family: "Noto Serif KR", serif;
-    font-size: 17px;
-    line-height: 2.25;
-    letter-spacing: 0.2px;
-}
-
-.letter-sign {
-    color: #604531;
-    text-align: right;
-    font-family: "Cormorant Garamond", Georgia, serif;
-    font-size: 17px;
-    line-height: 1.9;
-    margin-top: 45px;
-}
-
-/* =========================================================
-   CHOICE
-   ========================================================= */
-
-.section-area {
-    min-height: 82vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-}
-
-.section-title {

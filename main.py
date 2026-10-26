@@ -2753,6 +2753,7 @@ def render_room_lobby():
       [data-testid="stSidebar"] { display:none !important; }
       [data-testid="stHeader"] { display:none !important; }
       .main .block-container { max-width:none !important; padding:0 !important; margin:0 !important; }
+
       .st-key-room_fullscreen {
         position:relative !important; width:100vw !important;
         height:calc(100vh - 2px) !important; min-height:620px !important;
@@ -2769,32 +2770,75 @@ def render_room_lobby():
       }
       .room-photo-background:after {
         content:""; position:absolute; inset:0;
-        background:linear-gradient(180deg,rgba(10,5,3,.24),transparent 22%,transparent 70%,rgba(10,5,3,.28));
+        background:linear-gradient(180deg,rgba(10,5,3,.16),transparent 20%,transparent 74%,rgba(10,5,3,.22));
         pointer-events:none;
       }
-      .st-key-room_hotspot_fireplace, .st-key-room_hotspot_lp, .st-key-room_hotspot_bookshelf, .st-key-room_hotspot_checkout {
-        position:absolute !important; z-index:5 !important; padding:0 !important; margin:0 !important;
+
+      /* 투명 핫스팟: 평소에는 사진을 가리지 않고, 마우스를 올렸을 때만 표시 */
+      .st-key-room_hotspot_fireplace, .st-key-room_hotspot_lp,
+      .st-key-room_hotspot_bookshelf, .st-key-room_hotspot_checkout {
+        position:absolute !important; z-index:5 !important;
+        padding:0 !important; margin:0 !important; min-width:0 !important;
       }
-      .st-key-room_hotspot_fireplace { left:29% !important; top:57% !important; width:150px !important; }
-      .st-key-room_hotspot_lp { left:57% !important; top:48% !important; width:142px !important; }
-      .st-key-room_hotspot_bookshelf { right:2.5% !important; top:48% !important; width:138px !important; }
+      .st-key-room_hotspot_fireplace {
+        left:29.5% !important; top:49.5% !important;
+        width:10.5% !important; height:17.5% !important;
+      }
+      .st-key-room_hotspot_lp {
+        left:57.1% !important; top:43% !important;
+        width:11.5% !important; height:10.5% !important;
+      }
+      .st-key-room_hotspot_bookshelf {
+        left:80.1% !important; top:8.5% !important;
+        width:19.2% !important; height:57% !important;
+      }
       .st-key-room_hotspot_checkout { right:2.4% !important; top:2.5% !important; width:118px !important; }
+
+      .st-key-room_hotspot_fireplace > div,
+      .st-key-room_hotspot_lp > div,
+      .st-key-room_hotspot_bookshelf > div,
+      .st-key-room_hotspot_fireplace div[data-testid="stVerticalBlock"],
+      .st-key-room_hotspot_lp div[data-testid="stVerticalBlock"],
+      .st-key-room_hotspot_bookshelf div[data-testid="stVerticalBlock"],
+      .st-key-room_hotspot_fireplace div[data-testid="stButton"],
+      .st-key-room_hotspot_lp div[data-testid="stButton"],
+      .st-key-room_hotspot_bookshelf div[data-testid="stButton"] {
+        height:100% !important; min-height:0 !important; gap:0 !important;
+      }
       .st-key-room_fullscreen .st-key-room_hotspot_fireplace div[data-testid="stButton"] > button,
       .st-key-room_fullscreen .st-key-room_hotspot_lp div[data-testid="stButton"] > button,
       .st-key-room_fullscreen .st-key-room_hotspot_bookshelf div[data-testid="stButton"] > button {
-        min-height:42px !important; height:42px !important; width:100% !important;
-        padding:0 10px !important; border-radius:3px !important;
-        background:rgba(18,10,6,.58) !important; color:rgba(244,214,168,.82) !important;
-        border:1px solid rgba(218,177,116,.44) !important; box-shadow:none !important;
-        font-family:Georgia,serif !important; font-size:10px !important; letter-spacing:1.4px !important;
-        transition:background .18s ease,border-color .18s ease,color .18s ease,transform .18s ease !important;
+        position:relative !important; display:block !important;
+        min-height:0 !important; height:100% !important; width:100% !important;
+        margin:0 !important; padding:0 !important; overflow:visible !important;
+        border-radius:5px !important; background:transparent !important;
+        color:transparent !important; font-size:0 !important; line-height:0 !important;
+        border:1px solid transparent !important; box-shadow:none !important;
+        cursor:pointer !important; transition:background .18s ease,border-color .18s ease,box-shadow .18s ease !important;
       }
       .st-key-room_fullscreen .st-key-room_hotspot_fireplace div[data-testid="stButton"] > button:hover,
       .st-key-room_fullscreen .st-key-room_hotspot_lp div[data-testid="stButton"] > button:hover,
-      .st-key-room_fullscreen .st-key-room_hotspot_bookshelf div[data-testid="stButton"] > button:hover {
-        background:rgba(50,31,17,.92) !important; color:#fff0d3 !important;
-        border-color:#e4bc7e !important; transform:translateY(-1px) !important;
+      .st-key-room_fullscreen .st-key-room_hotspot_bookshelf div[data-testid="stButton"] > button:hover,
+      .st-key-room_fullscreen .st-key-room_hotspot_fireplace div[data-testid="stButton"] > button:focus-visible,
+      .st-key-room_fullscreen .st-key-room_hotspot_lp div[data-testid="stButton"] > button:focus-visible,
+      .st-key-room_fullscreen .st-key-room_hotspot_bookshelf div[data-testid="stButton"] > button:focus-visible {
+        background:rgba(236,183,101,.16) !important;
+        border:1px solid rgba(255,220,157,.9) !important;
+        box-shadow:inset 0 0 0 1px rgba(255,231,185,.24),0 0 22px rgba(237,169,80,.22) !important;
+        outline:none !important;
       }
+      .st-key-room_fullscreen .st-key-room_hotspot_fireplace div[data-testid="stButton"] > button:hover:after,
+      .st-key-room_fullscreen .st-key-room_hotspot_lp div[data-testid="stButton"] > button:hover:after,
+      .st-key-room_fullscreen .st-key-room_hotspot_bookshelf div[data-testid="stButton"] > button:hover:after {
+        position:absolute; left:50%; bottom:7px; transform:translateX(-50%); white-space:nowrap;
+        color:#ffe8c0 !important; font:10px/1.2 Georgia,serif !important;
+        letter-spacing:1.5px !important; text-shadow:0 1px 5px #000;
+        background:rgba(18,10,6,.82); border:1px solid rgba(226,183,120,.58);
+        border-radius:2px; padding:6px 8px; pointer-events:none;
+      }
+      .st-key-room_fullscreen .st-key-room_hotspot_fireplace div[data-testid="stButton"] > button:hover:after { content:"FIREPLACE"; }
+      .st-key-room_fullscreen .st-key-room_hotspot_lp div[data-testid="stButton"] > button:hover:after { content:"LP PLAYER"; }
+      .st-key-room_fullscreen .st-key-room_hotspot_bookshelf div[data-testid="stButton"] > button:hover:after { content:"BOOKSHELF"; }
       .st-key-room_fullscreen .st-key-room_hotspot_checkout div[data-testid="stButton"] > button {
         min-height:34px !important; height:34px !important; width:100% !important;
         background:rgba(15,8,5,.48) !important; color:#d5b58c !important;
@@ -2813,12 +2857,9 @@ def render_room_lobby():
       @media (max-width: 760px) {
         .st-key-room_fullscreen { height:calc(100vh - 2px) !important; min-height:600px !important; }
         .room-photo-background { background-position:52% center; }
-        .st-key-room_hotspot_fireplace { left:23% !important; top:57% !important; width:112px !important; }
-        .st-key-room_hotspot_lp { left:52% !important; top:48% !important; width:112px !important; }
-        .st-key-room_hotspot_bookshelf { right:1% !important; top:48% !important; width:112px !important; }
-        .st-key-room_fullscreen .st-key-room_hotspot_fireplace div[data-testid="stButton"] > button,
-        .st-key-room_fullscreen .st-key-room_hotspot_lp div[data-testid="stButton"] > button,
-        .st-key-room_fullscreen .st-key-room_hotspot_bookshelf div[data-testid="stButton"] > button { font-size:9px !important; letter-spacing:.5px !important; }
+        .st-key-room_hotspot_fireplace { left:26% !important; top:51% !important; width:12% !important; height:17% !important; }
+        .st-key-room_hotspot_lp { left:56% !important; top:44% !important; width:14% !important; height:11% !important; }
+        .st-key-room_hotspot_bookshelf { left:78% !important; top:9% !important; width:21% !important; height:55% !important; }
         .room-corner-brand { top:15px; left:15px; font-size:13px; }
         .room-bottom-note { left:15px; bottom:15px; font-size:10px; }
       }
@@ -2833,15 +2874,15 @@ def render_room_lobby():
             unsafe_allow_html=True
         )
         with st.container(key="room_hotspot_fireplace"):
-            if st.button("♨  FIREPLACE", key="room_click_fireplace", use_container_width=True):
+            if st.button("FIREPLACE", key="room_click_fireplace", use_container_width=True):
                 st.session_state.my_room_view = "fireplace"
                 st.rerun()
         with st.container(key="room_hotspot_lp"):
-            if st.button("♫  LP PLAYER", key="room_click_lp", use_container_width=True):
+            if st.button("LP PLAYER", key="room_click_lp", use_container_width=True):
                 st.session_state.my_room_view = "lp"
                 st.rerun()
         with st.container(key="room_hotspot_bookshelf"):
-            if st.button("▤  BOOKSHELF", key="room_click_shelf", use_container_width=True):
+            if st.button("BOOKSHELF", key="room_click_shelf", use_container_width=True):
                 st.session_state.my_room_view = "bookshelf"
                 st.rerun()
         with st.container(key="room_hotspot_checkout"):

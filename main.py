@@ -1800,6 +1800,111 @@ FINAL_VISUAL_FIXES = r"""
 .st-key-room_furniture_actions div[data-testid="stButton"] > button:hover { background:rgba(122,83,51,.18) !important; border-color:rgba(221,176,119,.55) !important; color:#ffe2b6 !important; }
 .main .block-container div[data-testid="stButton"] > button { font-size:15px !important; letter-spacing:2px !important; line-height:1.35 !important; min-height:44px !important; border-radius:2px !important; box-shadow:none !important; }
 
+/* Final check-in typography and controls: override older conflicting style layers. */
+.main .block-container .section-area:has(+ div .auth-box),
+.main .block-container .section-area:has(+ div .auth-box) .section-title {
+    text-align: center !important;
+}
+.main .block-container .section-area:has(+ div .auth-box) {
+    padding-top: clamp(42px, 8vh, 86px) !important;
+    margin-bottom: 24px !important;
+}
+.main .block-container .section-area:has(+ div .auth-box) .section-title {
+    color: #e4bd86 !important;
+    font-family: "Cormorant Garamond", Georgia, serif !important;
+    font-size: clamp(38px, 4.5vw, 52px) !important;
+    font-weight: 400 !important;
+    letter-spacing: 7px !important;
+    line-height: 1.1 !important;
+}
+.main .block-container .auth-box {
+    width: min(560px, calc(100vw - 36px)) !important;
+    max-width: 560px !important;
+    margin: 0 auto 18px !important;
+    padding: 25px 32px !important;
+    box-sizing: border-box !important;
+    background: rgba(31, 19, 13, .72) !important;
+    border: 1px solid rgba(204, 163, 111, .36) !important;
+    border-radius: 4px !important;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, .16) !important;
+}
+.main .block-container .auth-box .auth-subtitle {
+    display: block !important;
+    color: #e7d3b8 !important;
+    font-family: "Noto Serif KR", serif !important;
+    font-size: 15px !important;
+    font-weight: 400 !important;
+    text-align: center !important;
+    line-height: 2 !important;
+    letter-spacing: .15px !important;
+    margin: 0 auto !important;
+    opacity: 1 !important;
+    text-shadow: none !important;
+    overflow-wrap: keep-all !important;
+}
+.main .block-container .auth-box .auth-title {
+    color: #e4bd86 !important;
+    font-family: "Cormorant Garamond", Georgia, serif !important;
+    font-size: 32px !important;
+    font-weight: 400 !important;
+    letter-spacing: 5px !important;
+    text-align: center !important;
+    line-height: 1.25 !important;
+    margin-bottom: 8px !important;
+}
+.st-key-checkin_gate_action { max-width: 250px !important; margin: 0 auto 18px !important; }
+.st-key-checkin_gate_action div[data-testid="stButton"] > button {
+    min-height: 48px !important;
+    background: #d4ad7b !important;
+    color: #21150e !important;
+    border: 1px solid #d4ad7b !important;
+    border-radius: 3px !important;
+    box-shadow: none !important;
+    font-family: "Cormorant Garamond", Georgia, serif !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    letter-spacing: 3px !important;
+}
+.st-key-checkin_gate_action div[data-testid="stButton"] > button:hover {
+    background: #e6c79e !important;
+    border-color: #e6c79e !important;
+    color: #21150e !important;
+    transform: translateY(-1px) !important;
+}
+.st-key-checkin_gate_back { max-width: 560px !important; margin: 0 auto !important; }
+.st-key-checkin_gate_back div[data-testid="stButton"] > button {
+    min-height: 40px !important;
+    background: transparent !important;
+    color: #bda184 !important;
+    border: 1px solid rgba(204,163,111,.25) !important;
+    border-radius: 3px !important;
+    box-shadow: none !important;
+    font-size: 11px !important;
+    letter-spacing: 2px !important;
+}
+.st-key-checkin_gate_back div[data-testid="stButton"] > button:hover {
+    background: rgba(204,163,111,.08) !important;
+    color: #f0d7b5 !important;
+    border-color: rgba(204,163,111,.55) !important;
+}
+
+/* Room hotspots stay quiet until the pointer reaches the actual object target. */
+.st-key-room_fullscreen .st-key-room_hotspot_fireplace div[data-testid="stButton"] > button,
+.st-key-room_fullscreen .st-key-room_hotspot_lp div[data-testid="stButton"] > button,
+.st-key-room_fullscreen .st-key-room_hotspot_bookshelf div[data-testid="stButton"] > button {
+    background: rgba(18,10,6,.12) !important;
+    color: rgba(244,214,168,.0) !important;
+    border-color: rgba(218,177,116,.0) !important;
+    box-shadow: none !important;
+}
+.st-key-room_fullscreen .st-key-room_hotspot_fireplace div[data-testid="stButton"] > button:hover,
+.st-key-room_fullscreen .st-key-room_hotspot_lp div[data-testid="stButton"] > button:hover,
+.st-key-room_fullscreen .st-key-room_hotspot_bookshelf div[data-testid="stButton"] > button:hover {
+    background: rgba(18,10,6,.76) !important;
+    color: #fff0d3 !important;
+    border-color: rgba(218,177,116,.72) !important;
+}
+
 /* Reduce the glass gloss while preserving a clear rim and stem/base connection. */
 .mini-drink {
     filter: drop-shadow(0 4px 7px rgba(0,0,0,.14)) !important;
@@ -3798,14 +3903,16 @@ elif st.session_state.page == "my_room":
             )
             gate_left, gate_center, gate_right = st.columns([2,1,2])
             with gate_center:
-                if st.button("CHECK-IN", key="open_checkin", use_container_width=True):
-                    st.session_state.my_room_checkin_open = True
-                    st.session_state.auth_mode = "login"
+                with st.container(key="checkin_gate_action"):
+                    if st.button("CHECK-IN", key="open_checkin", use_container_width=True):
+                        st.session_state.my_room_checkin_open = True
+                        st.session_state.auth_mode = "login"
+                        st.rerun()
+            with st.container(key="checkin_gate_back"):
+                if st.button("← BACK TO LOBBY", key="my_room_back_gate", use_container_width=True):
+                    st.session_state.page = "main"
+                    st.session_state.my_room_checkin_open = False
                     st.rerun()
-            if st.button("← BACK TO LOBBY", key="my_room_back_gate", use_container_width=True):
-                st.session_state.page = "main"
-                st.session_state.my_room_checkin_open = False
-                st.rerun()
         else:
             st.markdown(
                 '<div class="auth-box"><div class="auth-title">CHECK-IN</div>'
